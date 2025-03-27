@@ -1,0 +1,47 @@
+rules_version = '2';
+service cloud.firestore {
+  // 共通の検証関数
+  function isAuthenticated() {
+    return request.auth != null;
+  }
+  
+  function isUserAuthenticated(userId) {
+    return isAuthenticated() && request.auth.uid == userId;
+  }
+  
+  match /databases/{database}/documents {
+    // ユーザードキュメントとサブコレクションへのアクセス
+    match /users/{userId} {
+      // ユーザー自身のカテゴリコレクションへのアクセスを明示的に許可
+      match /categories/{categoryId} {
+        allow read, write: if isUserAuthenticated(userId);
+      }
+      
+      // 他のサブコレクションも同様に明示的に許可
+      match /schedules/{scheduleId} {
+        allow read, write: if isUserAuthenticated(userId);
+      }
+      
+      match /achievements/{achievementId} {
+        allow read, write: if isUserAuthenticated(userId);
+      }
+      
+      match /templates/{templateId} {
+        allow read, write: if isUserAuthenticated(userId);
+      }
+      
+      // ユーザードキュメント自体へのアクセス
+      allow read, write: if isUserAuthenticated(userId);
+    }
+    
+    // ポケモンコレクション用のアクセス許可を追加
+    match /userCollections/{userId} {
+      allow read, write: if isUserAuthenticated(userId);
+    }
+    
+    // すべての他のドキュメントへのアクセスを完全に拒否
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

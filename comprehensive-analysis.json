@@ -1,0 +1,15 @@
+{
+  "technicalDebt": [],
+  "refactoringTargets": [],
+  "complexityIssues": [],
+  "largeFiles": [
+    {
+      "file": "total",
+      "lineCount": 4552
+    },
+    {
+      "file": "src/contexts/StudyContext.js",
+      "lineCount": 319
+    }
+  ]
+}

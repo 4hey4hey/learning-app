@@ -1,0 +1,206 @@
+/* 印刷用スタイル */
+@media print {
+  /* 印刷時に非表示にする要素 */
+  header, 
+  nav, 
+  button:not(.print-exempt),
+  .no-print,
+  .categories-panel,
+  .templates-panel,
+  .achievements-panel,
+  .stats-panel {
+    display: none !important;
+  }
+  
+  /* ページ全体のスタイル */
+  body {
+    font-size: 12pt;
+    background: white;
+    color: black;
+    margin: 0;
+    padding: 0;
+  }
+  
+  /* メインコンテンツを印刷に最適化 */
+  main {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+  
+  /* カレンダースタイル */
+  .weekly-calendar {
+    width: 100%;
+    padding: 0;
+    margin: 0;
+    box-shadow: none;
+    border: 1px solid #ccc;
+  }
+  
+  /* カレンダータイトル */
+  .weekly-calendar-title {
+    font-size: 20pt !important;
+    text-align: center;
+    margin: 10px 0;
+    font-weight: bold !important;
+  }
+  
+  /* テーブルスタイル */
+  .weekly-calendar table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+  }
+  
+  /* 行とセルの高さを固定 - A4サイズに最適化 */
+  .weekly-calendar tr {
+    height: 45px !important;
+    line-height: 1.2 !important;
+  }
+  
+  /* 印刷時に行の高さを統一 */
+  @page {
+    size: auto;
+    margin: 10mm;
+  }
+  
+  .weekly-calendar th,
+  .weekly-calendar td {
+    border: 1px solid #000;
+    padding: 3px;
+    vertical-align: top;
+  }
+  
+  /* 時間列 */
+  .weekly-calendar th:first-child,
+  .weekly-calendar td:first-child {
+    width: 65px !important; /* 十分な幅を確保 */
+    text-align: center;
+    font-weight: normal;
+    font-size: 10pt !important; /* フォントサイズを小さく調整 */
+    padding: 3px 0 !important; /* 左右のパディングを削減 */
+    font-family: Arial, sans-serif !important; /* コンパクトなフォント */
+    letter-spacing: -0.5px !important; /* 文字間を詰める */
+  }
+  
+  /* 曜日ヘッダー */
+  .weekly-calendar th {
+    background-color: #f0f0f0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    font-size: 13pt !important; /* フォントサイズを大きく */
+  }
+  
+  /* 本日のセル強調（印刷時には無効化） */
+  .today-highlight {
+    background-color: white !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  
+  /* 印刷時には本日のテキスト色と枠線も通常にリセット */
+  .text-blue-800, .text-blue-600 {
+    color: #333 !important;
+    font-weight: normal !important;
+  }
+  
+  /* 本日のセルを他の日と同様に表示（幅・線・パディングなど全て統一） */
+  .ring-blue-300, .ring-2, .ring-inset {
+    box-shadow: none !important;
+    border: 1px solid #000 !important;
+    padding: 3px !important;
+    width: auto !important;
+    outline: none !important;
+  }
+  
+  /* 本日のセルのスタイルを通常のセルと同じに */
+  td[class*="bg-blue"], th[class*="bg-blue"] {
+    background-color: white !important;
+    border: 1px solid #000 !important;
+    padding: 3px !important;
+    box-sizing: border-box !important;
+    width: auto !important;
+  }
+  
+  /* すべての曜日カラムを均等に */
+  .weekly-calendar th:not(:first-child),
+  .weekly-calendar td:not(:first-child) {
+    width: calc((100% - 65px) / 7) !important; /* 時間列の幅を考慮 */
+  }
+  
+  /* すべてのセルに同じスタイルを強制 */
+  .weekly-calendar td, .weekly-calendar th {
+    border: 1px solid #000 !important;
+    padding: 3px !important;
+    height: 45px !important; /* A4サイズに合わせて伸ばす */
+    min-height: 45px !important;
+    vertical-align: top !important;
+  }
+  
+  /* 空のセルにも高さを強制 */
+  .weekly-calendar td div {
+    min-height: 38px !important; /* パディングを考慮して調整 */
+    height: 38px !important;
+    box-sizing: border-box !important;
+  }
+  
+  /* スケジュールアイテム */
+  .schedule-item {
+    padding: 2px;
+    min-height: 38px !important; /* A4サイズに合わせて調整 */
+    height: 38px !important;
+    position: relative;
+    color: black !important;
+    border-radius: 2px;
+    /* 印刷時に背景色をさらに薄くする */
+    opacity: 0.3 !important;
+    /* 枠線を追加して読みやすく */
+    border: 1px solid #222 !important;
+    /* カラー出力サポート */
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    box-sizing: border-box !important;
+  }
+  
+  /* スケジュールアイテムのテキスト - さらに強調 */
+  .schedule-item div:first-child {
+    font-weight: 900 !important; /* 文字の太さを最大に */
+    font-size: 14pt !important; /* フォントサイズを大きく */
+    /* 文字の色をより濃くして読みやすく */
+    color: #000000 !important;
+    /* 文字をより読みやすくするためのテキストシャドウを強化 */
+    text-shadow: 
+      0px 0px 1px #fff,
+      0px 0px 2px #fff,
+      0px 0px 3px #fff,
+      0px 0px 4px #fff !important;
+    -webkit-text-stroke: 0.3px black !important; /* 文字の輪郭を追加 */
+    padding-bottom: 0 !important;
+    line-height: 1.5 !important; /* 行の高さを増やす */
+    height: 25px !important; /* テキスト項目の高さを増やす */
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    margin-top: 5px !important; /* 上部に余白を追加 */
+  }
+  
+  /* 実績アイコンを読みやすく表示 */
+  .achievement-icon {
+    position: absolute;
+    bottom: 5px !important; /* 位置を調整 */
+    right: 5px !important;
+    font-size: 12pt !important; /* サイズを大きく */
+    color: black !important;
+    font-weight: bold !important;
+    text-shadow: 
+      0px 0px 1px white, 
+      0px 0px 2px white, 
+      0px 0px 3px white !important; /* シャドウを強化 */
+  }
+  
+  /* バックグラウンド印刷を強制 */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}

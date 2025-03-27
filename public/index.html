@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta
+      name="description"
+      content="学習管理アプリケーション"
+    />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    
+    <script>
+      window.addEventListener('error', function(event) {
+        console.error('キャッチされていないエラー:', {
+          message: event.message,
+          filename: event.filename,
+          lineno: event.lineno,
+          colno: event.colno,
+          error: event.error
+        });
+      });
+
+      // 追加のグローバルエラーハンドリング
+      window.onerror = function(message, source, lineno, colno, error) {
+        console.error('グローバルエラー:', {
+          message,
+          source,
+          lineno,
+          colno,
+          error
+        });
+        return false; // デフォルトのエラーハンドラを呼び出す
+      };
+    </script>
+
+    <title>学習管理アプリ</title>
+  </head>
+  <body>
+    <noscript>このアプリケーションの実行にはJavaScriptが必要です。</noscript>
+    <div id="root"></div>
+  </body>
+</html>
