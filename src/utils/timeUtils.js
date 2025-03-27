@@ -3,6 +3,52 @@ import { format, startOfWeek, addDays, isValid, parse } from 'date-fns';
 import { dateLogger } from './loggerUtils';
 
 /**
+ * 日付を標準形式に正規化する
+ * @param {Date|string|object} date - 正規化する日付
+ * @returns {Date} 正規化された日付オブジェクト
+ */
+export const normalizeDate = (date) => {
+  try {
+    // nullやundefinedの場合は現在の日付を返す
+    if (!date) {
+      return new Date();
+    }
+    
+    // すでにDateオブジェクトの場合
+    if (date instanceof Date) {
+      // 有効な日付かチェック
+      if (isNaN(date.getTime())) {
+        return new Date(); // 無効な場合は現在の日付
+      }
+      return new Date(date); // 新しいDateオブジェクトを作成して返す
+    }
+    
+    // 文字列の場合
+    if (typeof date === 'string') {
+      const parsedDate = new Date(date);
+      
+      // 有効な日付かチェック
+      if (isNaN(parsedDate.getTime())) {
+        return new Date(); // 無効な場合は現在の日付
+      }
+      
+      return parsedDate;
+    }
+    
+    // Firestoreのタイムスタンプの場合
+    if (typeof date === 'object' && 'seconds' in date) {
+      return new Date(date.seconds * 1000);
+    }
+    
+    // それ以外の場合は現在の日付
+    return new Date();
+  } catch (error) {
+    dateLogger.error('日付正規化エラー:', error);
+    return new Date(); // エラー時は現在の日付
+  }
+};
+
+/**
  * 日付を YYYY-MM-DD 形式の文字列に正規化する
  * @param {Date|string|object} date - 変換する日付
  * @returns {string} 正規化された日付文字列
@@ -11,27 +57,8 @@ export const formatDateToString = (date) => {
   try {
     if (!date) return '';
     
-    // Dateオブジェクトの場合
-    if (date instanceof Date) {
-      return format(date, 'yyyy-MM-dd');
-    }
-    
-    // 文字列の場合
-    if (typeof date === 'string') {
-      const parsedDate = new Date(date);
-      if (isValid(parsedDate)) {
-        return format(parsedDate, 'yyyy-MM-dd');
-      }
-      return '';
-    }
-    
-    // Firestoreのタイムスタンプの場合
-    if (typeof date === 'object' && 'seconds' in date) {
-      const parsedDate = new Date(date.seconds * 1000);
-      return format(parsedDate, 'yyyy-MM-dd');
-    }
-    
-    return '';
+    const normalizedDate = normalizeDate(date);
+    return format(normalizedDate, 'yyyy-MM-dd');
   } catch (error) {
     dateLogger.error('日付フォーマットエラー:', error);
     return '';
@@ -45,22 +72,8 @@ export const formatDateToString = (date) => {
  */
 export const getWeekStartDate = (date) => {
   try {
-    if (!date) return startOfWeek(new Date(), { weekStartsOn: 1 });
-    
-    let targetDate;
-    
-    if (date instanceof Date) {
-      targetDate = date;
-    } else if (typeof date === 'string') {
-      targetDate = new Date(date);
-    } else if (typeof date === 'object' && 'seconds' in date) {
-      targetDate = new Date(date.seconds * 1000);
-    } else {
-      targetDate = new Date();
-    }
-    
-    // 週の開始日（月曜日）を返す
-    return startOfWeek(targetDate, { weekStartsOn: 1 });
+    const normalizedDate = normalizeDate(date);
+    return startOfWeek(normalizedDate, { weekStartsOn: 1 });
   } catch (error) {
     dateLogger.error('週開始日計算エラー:', error);
     return startOfWeek(new Date(), { weekStartsOn: 1 });
@@ -89,21 +102,10 @@ export const getWeekIdentifier = (weekStartDate) => {
  */
 export const getDayKeyFromDate = (date) => {
   try {
-    if (!date) return 'day1';
-    
-    let targetDate;
-    if (date instanceof Date) {
-      targetDate = date;
-    } else if (typeof date === 'string') {
-      targetDate = new Date(date);
-    } else if (typeof date === 'object' && 'seconds' in date) {
-      targetDate = new Date(date.seconds * 1000);
-    } else {
-      targetDate = new Date();
-    }
+    const normalizedDate = normalizeDate(date);
     
     // 日曜は0、月曜は1、...、土曜は6
-    const dayOfWeek = targetDate.getDay();
+    const dayOfWeek = normalizedDate.getDay();
     // 月曜を1、...、日曜を7とする
     const adjustedDay = dayOfWeek === 0 ? 7 : dayOfWeek;
     
@@ -122,33 +124,16 @@ export const getDayKeyFromDate = (date) => {
  * @returns {string} スケジュールの一意識別子
  */
 export const generateScheduleKey = (date, dayKey, hourKey) => {
-  let dateStr;
-  
   try {
-    // 日付がDateオブジェクトの場合
-    if (date instanceof Date) {
-      dateStr = formatDateToString(date);
-    } 
-    // 日付が文字列の場合
-    else if (typeof date === 'string') {
-      dateStr = formatDateToString(new Date(date));
-    } 
-    // FirestoreのTimestamp型の場合
-    else if (date && typeof date === 'object' && 'seconds' in date) {
-      dateStr = formatDateToString(new Date(date.seconds * 1000));
-    } 
-    // その他の場合
-    else {
-      dateStr = formatDateToString(new Date()); // 今日の日付をデフォルトとして使用
-    }
+    const dateStr = formatDateToString(normalizeDate(date));
+    // 形式: YYYY-MM-DD_dayX_hourXX
+    return `${dateStr}_${dayKey}_${hourKey}`;
   } catch (error) {
-    dateLogger.error('日付変換エラー:', error);
+    dateLogger.error('スケジュールキー生成エラー:', error);
     // エラー時は現在の日付を使用
-    dateStr = formatDateToString(new Date());
+    const today = formatDateToString(new Date());
+    return `${today}_${dayKey}_${hourKey}`;
   }
-  
-  // 形式: YYYY-MM-DD_dayX_hourXX
-  return `${dateStr}_${dayKey}_${hourKey}`;
 };
 
 /**
@@ -177,6 +162,11 @@ export const generateEmptyWeekSchedule = (weekStartDate) => {
 
 /**
  * カテゴリ別の学習時間を計算する
+ * @param {Object} schedule スケジュールデータ
+ * @param {Array} categories カテゴリデータ
+ * @param {Object} [achievements={}] 実績データ
+ * @param {boolean} [includeAchievementsOnly=false] 実績のある項目のみを含めるかどうか
+ * @returns {Object} カテゴリ別の学習時間（分）
  */
 export const calculateCategoryHours = (
   schedule, 
@@ -221,6 +211,10 @@ export const calculateCategoryHours = (
 
 /**
  * 週間の合計学習時間を計算する
+ * @param {Object} schedule 週間スケジュールデータ
+ * @param {Object} [achievements={}] 実績データ
+ * @param {boolean} [includeAchievementsInStats=false] 実績がある項目のみを集計に含めるかどうか
+ * @returns {number} 学習時間の合計(時間単位、1時間=60分)
  */
 export const calculateWeekStudyHours = (
   schedule, 
@@ -267,6 +261,10 @@ export const calculateWeekStudyHours = (
 
 /**
  * 全期間の合計学習時間を計算する
+ * @param {Object} allSchedules 全てのスケジュールデータ
+ * @param {Object} [allAchievements={}] 全ての実績データ
+ * @param {boolean} [includeAchievementsInStats=false] 実績がある項目のみを集計に含めるかどうか
+ * @returns {number} 全期間の学習時間の合計(時間単位)
  */
 export const calculateTotalStudyHours = (
   allSchedules, 
@@ -352,8 +350,16 @@ export const calculateTotalStudyHours = (
 
 /**
  * 月間の学習時間を計算する
+ * @param {Array} weeklySchedules 週間スケジュールデータの配列
+ * @param {Object} [achievements={}] 実績データ
+ * @param {boolean} [includeAchievementsInStats=false] 実績がある項目のみを集計に含めるかどうか
+ * @returns {number} 月間学習時間の合計(時間単位)
  */
-export const calculateMonthStudyHours = (weeklySchedules, achievements = {}, includeAchievementsInStats = false) => {
+export const calculateMonthStudyHours = (
+  weeklySchedules, 
+  achievements = {}, 
+  includeAchievementsInStats = false
+) => {
   if (!weeklySchedules || !Array.isArray(weeklySchedules) || !weeklySchedules.length) return 0;
   
   let totalMonthHours = 0;
@@ -373,4 +379,62 @@ export const calculateMonthStudyHours = (weeklySchedules, achievements = {}, inc
   }
   
   return Math.round(totalMonthHours * 10) / 10;
+};
+
+/**
+ * 実績データ構造のデバッグ情報を生成する
+ * @param {Object} allAchievements 実績データ
+ * @returns {Object} デバッグ情報
+ */
+export const debugAchievementStructure = (allAchievements) => {
+  const debugResult = {
+    totalDateKeys: Object.keys(allAchievements).length,
+    achievementDetails: {},
+    statusDistribution: {
+      completed: 0,
+      partial: 0,
+      failed: 0,
+      other: 0
+    }
+  };
+
+  for (const dateKey in allAchievements) {
+    const achievements = allAchievements[dateKey];
+    
+    if (typeof achievements !== 'object' || achievements === null) continue;
+
+    const dateDetails = {
+      totalAchievements: 0,
+      achievementKeys: []
+    };
+
+    for (const achievementKey in achievements) {
+      // updatedAtなどのシステム情報を除外
+      if (achievementKey === 'updatedAt') continue;
+
+      const achievement = achievements[achievementKey];
+      
+      dateDetails.totalAchievements++;
+      dateDetails.achievementKeys.push(achievementKey);
+
+      // ステータス分布をカウント
+      switch (achievement.status) {
+        case 'completed':
+          debugResult.statusDistribution.completed++;
+          break;
+        case 'partial':
+          debugResult.statusDistribution.partial++;
+          break;
+        case 'failed':
+          debugResult.statusDistribution.failed++;
+          break;
+        default:
+          debugResult.statusDistribution.other++;
+      }
+    }
+
+    debugResult.achievementDetails[dateKey] = dateDetails;
+  }
+
+  return debugResult;
 };
