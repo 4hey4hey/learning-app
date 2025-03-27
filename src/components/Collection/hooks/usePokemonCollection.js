@@ -118,7 +118,6 @@ export const usePokemonCollection = () => {
   // StudyStateContextからの学習時間が更新された場合に反映
   useEffect(() => {
     if (totalStudyHours !== localTotalHours) {
-      console.log('学習時間の更新を検出:', totalStudyHours);
       setLocalTotalHours(totalStudyHours);
     }
   }, [totalStudyHours, localTotalHours]);
@@ -126,20 +125,11 @@ export const usePokemonCollection = () => {
   // 実際の学習時間を使用
   const effectiveStudyHours = localTotalHours;
   
-  // デバッグ情報の出力
-  useEffect(() => {
-    console.log('学習時間データ現在値:', localTotalHours);
-    console.log('実際の学習時間:', effectiveStudyHours);
-  }, [localTotalHours, effectiveStudyHours]);
-  
   // ポケモンデータにcollected状態を追加
   useEffect(() => {
     const fetchCollection = async () => {
       setLoading(true);
       try {
-        console.log('ポケモンコレクション: 学習時間データ =', totalStudyHours, '時間');
-        console.log('ポケモンコレクション: 有効な学習時間 =', effectiveStudyHours, '時間');
-        
         // ユーザーの獲得済みポケモンIDリストを取得
         let collectedPokemonIds = [];
         
@@ -148,8 +138,6 @@ export const usePokemonCollection = () => {
           const userData = await getDocument('pokemons', 'collection');
           collectedPokemonIds = userData?.collectedPokemons || [];
         }
-        
-        console.log('ポケモンコレクション: 獲得済みID =', collectedPokemonIds);
         
         // ポケモンデータに獲得状態を追加
         const pokemonsWithStatus = POKEMON_DATA.map(pokemon => ({
@@ -168,7 +156,7 @@ export const usePokemonCollection = () => {
           .map(pokemon => pokemon.id);
           
         if (JSON.stringify(newCollectedIds) !== JSON.stringify(collectedPokemonIds) && currentUser) {
-          console.log('ポケモンコレクション: 新しい獲得ポケモンを保存します', newCollectedIds);
+          console.log('新しいポケモンを保存します');
           saveCollectionToDatabase(pokemonsWithStatus);
         }
         

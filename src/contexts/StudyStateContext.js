@@ -5,6 +5,7 @@
 // StudyContextから分割されたコンポーネントの一部です
 
 import React, { createContext, useState, useContext, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useAllTimeData } from '../hooks/useAllTimeData';
 import { useCategory } from './CategoryContext';
 import { useSchedule } from './ScheduleContext';
 import { useAchievement } from './AchievementContext';
@@ -52,12 +53,7 @@ export const StudyStateProvider = ({ children }) => {
   // 実績データ変更イベントをリッスン
   useEffect(() => {
     const handleAchievementDataChanged = async () => {
-      console.log('実績データ変更イベントを受信');
       // 実績データの再取得は行わず、現在のデータから再計算する
-      console.log('現在のデータから学習時間を再計算');
-      
-      // 実績データの詳細をログ出力
-      console.log('実績データ詳細:', Object.keys(allAchievements).length, '件');
       
       // 学習時間を計算
       const total = calculateTotalStudyHours(
@@ -65,7 +61,6 @@ export const StudyStateProvider = ({ children }) => {
         allAchievements,
         includeAchievementsInStats
       );
-      console.log('実績データ変更後の学習時間再計算:', total, '時間');
       setTotalStudyHours(total);
     };
     
@@ -92,16 +87,10 @@ export const StudyStateProvider = ({ children }) => {
   // 実績データを再取得する関数
   const refreshAchievementData = useCallback(async () => {
     try {
-      console.log('実績データ刷新開始');
       const achievements = await getAllDocuments('achievements');
-      console.log('実績データ刷新完了:', achievements ? Object.keys(achievements).length : 0, '件');
-      
-      // 実績データの設定は外部から行うようにし、無限ループを避ける
-      // setAllAchievements(achievements || {});
-      
       return achievements || {};
     } catch (err) {
-      console.error('実績データ刷新エラー:', err);
+      console.error('実績データ再取得エラー:', err);
       return {};
     }
   }, [getAllDocuments]);
@@ -110,22 +99,12 @@ export const StudyStateProvider = ({ children }) => {
   useEffect(() => {
     const fetchAllData = async () => {
       try {
-        console.log('全てのデータの取得開始');
         // 全てのスケジュールを取得
         const schedules = await getAllDocuments('schedules');
-        console.log('取得したスケジュール:', schedules ? Object.keys(schedules).length : 0, '件');
         setAllSchedules(schedules || {});
         
         // 全ての実績を取得
         const achievements = await getAllDocuments('achievements');
-        console.log('取得した実績:', achievements ? Object.keys(achievements).length : 0, '件');
-        
-        // 実績データの詳細をログ出力
-        if (achievements && Object.keys(achievements).length > 0) {
-          const sampleKey = Object.keys(achievements)[0];
-          console.log('実績データサンプル:', sampleKey, achievements[sampleKey]);
-        }
-        
         setAllAchievements(achievements || {});
       } catch (err) {
         console.error('データ取得エラー:', err);
@@ -143,31 +122,13 @@ export const StudyStateProvider = ({ children }) => {
     // 学習時間計算処理
     const processStudyHours = () => {
       if (Object.keys(allSchedules).length > 0) {
-        console.log('学習時間計算: スケジュール件数 =', Object.keys(allSchedules).length);
-        console.log('学習時間計算: 実績件数 =', Object.keys(allAchievements).length);
-        console.log('学習時間計算: 実績ベース表示 =', includeAchievementsInStats);
-      
-        // 実績データサンプルを出力
-        if (Object.keys(allAchievements).length > 0) {
-          const sampleKeys = Object.keys(allAchievements).slice(0, 3);
-          console.log('実績データサンプルキー:', sampleKeys);
-          
-          // 実績データの内容を確認
-          sampleKeys.forEach(key => {
-            console.log(`実績[${key}]:`, allAchievements[key]);
-          });
-        }
-        
         // 通常の計算を実行
         const total = calculateTotalStudyHours(
           allSchedules,
           allAchievements,
           includeAchievementsInStats
         );
-        console.log('学習時間計算結果:', total, '時間');
         setTotalStudyHours(total);
-      } else {
-        console.log('学習時間計算: データなし');
       }
     };
 
@@ -184,7 +145,6 @@ export const StudyStateProvider = ({ children }) => {
       
       // 既に再取得中ならスキップ
       if (isRefreshing.current) {
-        console.log('既に再取得中のためスキップします', isRefreshing.current);
         return;
       }
 
@@ -193,17 +153,12 @@ export const StudyStateProvider = ({ children }) => {
           Object.keys(allAchievements).length === 0 && 
           Object.keys(allSchedules).length > 0) {
         
-        console.log('再取得フラグ設定前:', isRefreshing.current);
         isRefreshing.current = true; // 再取得中フラグをセット
-        console.log('再取得フラグ設定後:', isRefreshing.current);
 
         try {
-          console.log('実績データが不足しているため再取得します (一度のみ)');
           const achievements = await refreshAchievementData();
           
           if (achievements && Object.keys(achievements).length > 0) {
-            console.log('実績データ再取得成功:', Object.keys(achievements).length, '件');
-            
             // 実績データをそのまま設定する（変換せずに）
             setAllAchievements(achievements);
             
@@ -215,7 +170,6 @@ export const StudyStateProvider = ({ children }) => {
           // 処理完了後にフラグをリセット
           setTimeout(() => {
             isRefreshing.current = false;
-            console.log('再取得フラグをリセットしました:', isRefreshing.current);
           }, 1000); // 少し遅延させて確実にフラグをリセット
         }
       }
@@ -233,7 +187,6 @@ export const StudyStateProvider = ({ children }) => {
       getAllDocuments('schedules').then(schedules => {
         if (schedules) {
           setAllSchedules(schedules);
-          console.log('スケジュール変更後に再取得しました:', Object.keys(schedules).length, '件');
         }
       });
     }
@@ -260,7 +213,6 @@ export const StudyStateProvider = ({ children }) => {
 
   // 直接値を設定する関数
   const setAchievementsInStats = useCallback((value) => {
-    console.log(`実績設定直接変更: ${value}`);
     setIncludeAchievementsInStats(value);
   }, [setIncludeAchievementsInStats]);
 
@@ -270,17 +222,11 @@ export const StudyStateProvider = ({ children }) => {
   // true: 実績のある項目のみを集計に含める
   const toggleAchievementsInStats = useCallback((value) => {
     const newValue = typeof value === 'boolean' ? value : !includeAchievementsInStats;
-    console.log(`実績設定変更（StudyStateContext）: ${includeAchievementsInStats} -> ${newValue}`);
     setIncludeAchievementsInStats(newValue);
-    
-    // 変更が確実に反映されるようにログ出力
-    setTimeout(() => {
-      console.log('実績設定確認（StudyStateContext）:', { 
-        newValue,
-        currentValue: includeAchievementsInStats
-      });
-    }, 100);
   }, [includeAchievementsInStats, setIncludeAchievementsInStats]);
+
+  // 全期間データの取得
+  const { allTimeData, loading: allTimeLoading, error: allTimeError, refreshAllTimeData } = useAllTimeData();
 
   // コンテキスト値のメモ化
   const value = useMemo(() => ({
@@ -306,7 +252,13 @@ export const StudyStateProvider = ({ children }) => {
     setAchievementsInStats,
     refreshAchievementData,
     setError,
-    setIsLoading
+    setIsLoading,
+    
+    // 全期間データ
+    allTimeData,
+    allTimeLoading,
+    allTimeError,
+    refreshAllTimeData
   }), [
     categories,
     schedule,
@@ -321,7 +273,11 @@ export const StudyStateProvider = ({ children }) => {
     error,
     toggleAchievementsInStats,
     setAchievementsInStats,
-    refreshAchievementData
+    refreshAchievementData,
+    allTimeData,
+    allTimeLoading,
+    allTimeError,
+    refreshAllTimeData
   ]);
 
   return (

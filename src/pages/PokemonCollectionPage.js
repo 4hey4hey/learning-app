@@ -1,10 +1,23 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import MainLayout from '../components/Layout/MainLayout';
 import PokemonCollection from '../components/Collection/PokemonCollection';
+import AllTimeStats from '../components/Collection/AllTimeStats';
 import { useStudyState } from '../contexts/StudyStateContext';
 
 const PokemonCollectionPage = () => {
-  const { isLoading, totalStudyHours } = useStudyState();
+  const { isLoading, totalStudyHours, allTimeData, allTimeLoading, refreshAllTimeData } = useStudyState();
+  
+  // ページ読み込み時に全期間データを確認
+  useEffect(() => {
+    console.log('ポケモンコレクションページ: 全期間データロード状態 =', allTimeLoading);
+    console.log('ポケモンコレクションページ: 全期間データ =', allTimeData);
+    
+    // データがない場合は再取得
+    if (!allTimeData?.totalHours && !allTimeLoading && refreshAllTimeData) {
+      console.log('ポケモンコレクションページ: 全期間データを再取得します');
+      refreshAllTimeData();
+    }
+  }, [allTimeData, allTimeLoading, refreshAllTimeData]);
   
   if (isLoading) {
     return (
@@ -22,6 +35,9 @@ const PokemonCollectionPage = () => {
         <h1 className="text-2xl font-bold text-gray-800">ポケモンコレクション</h1>
         <p className="text-gray-600">学習の進捗に応じてポケモンをコレクションしよう！</p>
       </div>
+      
+      {/* 全期間統計を追加 */}
+      <AllTimeStats />
       
       <PokemonCollection />
     </MainLayout>
