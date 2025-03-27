@@ -106,7 +106,7 @@ const POKEMON_DATA = [
 export const usePokemonCollection = () => {
   const { currentUser } = useAuth();
   const { getDocument, setDocument } = useFirestore();
-  const { totalStudyHours } = useStudyState();
+  const { totalStudyHours, allTimeData } = useStudyState();
   
   const [pokemonCollection, setPokemonCollection] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -122,8 +122,8 @@ export const usePokemonCollection = () => {
     }
   }, [totalStudyHours, localTotalHours]);
   
-  // 実際の学習時間を使用
-  const effectiveStudyHours = localTotalHours;
+  // 実際の学習時間を使用 - allTimeDataから取得した値を優先的に使用
+  const effectiveStudyHours = allTimeData?.totalHours > 0 ? allTimeData.totalHours : localTotalHours;
   
   // ポケモンデータにcollected状態を追加
   useEffect(() => {
@@ -178,7 +178,7 @@ export const usePokemonCollection = () => {
     };
     
     fetchCollection();
-  }, [currentUser, getDocument, totalStudyHours, effectiveStudyHours]);
+  }, [currentUser, getDocument, totalStudyHours, effectiveStudyHours, allTimeData?.totalHours]);
   
   // 獲得状態をデータベースに保存
   const saveCollectionToDatabase = async (pokemons) => {

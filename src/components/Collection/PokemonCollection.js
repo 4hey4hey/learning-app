@@ -1,19 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useStudyState } from '../../contexts/StudyStateContext';
 import { usePokemonCollection } from './hooks/usePokemonCollection';
 
 const PokemonCollection = () => {
-  const { totalStudyHours } = useStudyState();
+  const { totalStudyHours, allTimeData } = useStudyState();
   const { pokemonCollection, loading, error, effectiveStudyHours } = usePokemonCollection();
   const [selectedBadge, setSelectedBadge] = useState(null);
-  
-  // デバッグ情報表示
-  useEffect(() => {
-    console.log('ポケモンコレクションページ:');
-    console.log('- StudyStateContext からの累計学習時間:', totalStudyHours, '時間');
-    console.log('- 表示用有効学習時間:', effectiveStudyHours, '時間');
-    console.log('- ポケモン獲得数:', pokemonCollection ? pokemonCollection.filter(p => p.collected).length : 0);
-  }, [totalStudyHours, effectiveStudyHours, pokemonCollection]);
   
   // バッジ詳細モーダル表示
   const showBadgeDetails = (badge) => {

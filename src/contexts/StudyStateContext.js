@@ -5,13 +5,16 @@
 // StudyContextから分割されたコンポーネントの一部です
 
 import React, { createContext, useState, useContext, useCallback, useMemo, useEffect, useRef } from 'react';
-import { useAllTimeData } from '../hooks/useAllTimeData';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../firebase/config';
 import { useCategory } from './CategoryContext';
 import { useSchedule } from './ScheduleContext';
 import { useAchievement } from './AchievementContext';
 import { useTemplate } from './TemplateContext';
 import { calculateCategoryHours, calculateWeekStudyHours, calculateTotalStudyHours } from '../utils/timeUtils';
 import { useFirestore } from '../hooks/useFirestore';
+import { useAuth } from '../hooks/useAuth';
+import { calculateTotalHours } from '../hooks/useTotalStudyHours';
 
 // コンテキスト作成
 const StudyStateContext = createContext();
@@ -30,9 +33,120 @@ export const StudyStateProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true); // データロード中は初期値をtrueに設定
   const [error, setError] = useState(null);
   const { getAllDocuments } = useFirestore();
+  const { currentUser, demoMode } = useAuth();
   const [allSchedules, setAllSchedules] = useState({});
   const [allAchievements, setAllAchievements] = useState({});
   const [totalStudyHours, setTotalStudyHours] = useState(0);
+  
+  // 全期間データを管理する状態
+  const [allTimeData, setAllTimeData] = useState({
+    totalHours: 0,
+    completedCount: 0,
+    partialCount: 0,
+    totalCount: 0
+  });
+  const [allTimeLoading, setAllTimeLoading] = useState(true);
+  const [allTimeError, setAllTimeError] = useState(null);
+  
+  // 全期間データを取得する関数
+  const fetchAllTimeData = useCallback(async () => {
+    if (!currentUser && !demoMode) {
+      setAllTimeLoading(false);
+      return;
+    }
+
+    setAllTimeLoading(true);
+    setAllTimeError(null);
+
+    try {
+      // デモモードの場合はローカルストレージから取得
+      if (demoMode) {
+        // デモモード処理
+        // ...
+        setAllTimeLoading(false);
+        return;
+      }
+      
+      // Firestore からデータを取得
+      const firestoreSchedules = {};
+      const firestoreAchievements = {};
+      
+      // スケジュールデータの取得
+      const schedulesRef = collection(db, `users/${currentUser.uid}/schedules`);
+      const schedulesSnapshot = await getDocs(schedulesRef);
+      
+      schedulesSnapshot.forEach(doc => {
+        firestoreSchedules[doc.id] = doc.data();
+      });
+        
+      // 実績データの取得
+      const achievementsRef = collection(db, `users/${currentUser.uid}/achievements`);
+      const achievementsSnapshot = await getDocs(achievementsRef);
+      
+      achievementsSnapshot.forEach(doc => {
+        firestoreAchievements[doc.id] = doc.data();
+      });
+      
+      // 手動で実績データを処理
+      let manualCompletedCount = 0;
+      let manualPartialCount = 0;
+      let manualTotalCount = 0;
+      
+      // 各週の実績データを確認
+      Object.values(firestoreAchievements).forEach(weekData => {
+        if (!weekData) return;
+        
+        Object.entries(weekData).forEach(([key, achievement]) => {
+          if (key === 'updatedAt' || !achievement || !achievement.status) return;
+          
+          manualTotalCount++;
+          if (achievement.status === 'completed') {
+            manualCompletedCount++;
+          } else if (achievement.status === 'partial') {
+            manualPartialCount++;
+          }
+        });
+      });
+      
+      // 実際に関数を使って計算
+      const totalHours = calculateTotalStudyHours(firestoreSchedules, firestoreAchievements, true);
+      
+      // 独自実装の計算関数を使用
+      const backupTotalHours = calculateTotalHours(firestoreSchedules, firestoreAchievements, true);
+      
+      // 全ての実績データの合計を計算
+      let calculatedTotalHours = totalHours;
+      if (calculatedTotalHours === 0) {
+        // 独自実装の計算結果があればそれを使用
+        if (backupTotalHours > 0) {
+          calculatedTotalHours = backupTotalHours;
+        }
+        // それでもゼロなら手動カウントの値を使用
+        else if (manualCompletedCount > 0 || manualPartialCount > 0) {
+          // 1実績=1時間として計算
+          calculatedTotalHours = manualCompletedCount + manualPartialCount;
+        }
+      }
+      
+      setAllTimeData({
+        totalHours: calculatedTotalHours,
+        completedCount: manualCompletedCount,
+        partialCount: manualPartialCount,
+        totalCount: manualTotalCount
+      });
+      
+    } catch (error) {
+      console.error('全期間データ取得エラー:', error);
+      setAllTimeError('データの取得中にエラーが発生しました。');
+    } finally {
+      setAllTimeLoading(false);
+    }
+  }, [currentUser, demoMode]);
+  
+  // 初回マウント時に全期間データを取得
+  useEffect(() => {
+    fetchAllTimeData();
+  }, [fetchAllTimeData]);
   
   // データを再取得中かどうかを追跡するref（コンポーネントのトップレベルで定義）
   const isRefreshing = useRef(false);
@@ -225,9 +339,6 @@ export const StudyStateProvider = ({ children }) => {
     setIncludeAchievementsInStats(newValue);
   }, [includeAchievementsInStats, setIncludeAchievementsInStats]);
 
-  // 全期間データの取得
-  const { allTimeData, loading: allTimeLoading, error: allTimeError, refreshAllTimeData } = useAllTimeData();
-
   // コンテキスト値のメモ化
   const value = useMemo(() => ({
     // データ
@@ -258,7 +369,7 @@ export const StudyStateProvider = ({ children }) => {
     allTimeData,
     allTimeLoading,
     allTimeError,
-    refreshAllTimeData
+    refreshAllTimeData: fetchAllTimeData
   }), [
     categories,
     schedule,
@@ -277,7 +388,7 @@ export const StudyStateProvider = ({ children }) => {
     allTimeData,
     allTimeLoading,
     allTimeError,
-    refreshAllTimeData
+    fetchAllTimeData
   ]);
 
   return (

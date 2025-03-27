@@ -32,6 +32,7 @@ export const AnalyticsDataProvider = ({ children }) => {
   const [achievementData, setAchievementData] = useState({});
   const [categoryStats, setCategoryStats] = useState({ categoryHours: {}, totalHours: 0 });
   const [dailyData, setDailyData] = useState([]);
+  const [lastUpdated, setLastUpdated] = useState(null);
   
   // 前回のフェッチパラメータを追跡して重複呼び出しを防止
   const lastFetchParams = useRef({
@@ -46,6 +47,13 @@ export const AnalyticsDataProvider = ({ children }) => {
 
   // データ取得関数
   const fetchAnalyticsData = useCallback(async (forceRefresh = false) => {
+    // 強制更新時は前回のパラメータをリセット
+    if (forceRefresh) {
+      console.log('強制更新要求が検出されました - キャッシュを無視します');
+      // 最終更新時間を一旦nullにセット
+      setLastUpdated(null);
+    }
+    
     // 必要なデータがない場合はスキップ
     if (!currentUser || !startDate || !endDate || categories.length === 0) {
       console.log('必要なデータが不足しているため、分析データの取得をスキップします。');
@@ -53,7 +61,7 @@ export const AnalyticsDataProvider = ({ children }) => {
     }
     
     // 既にロード中の場合はスキップ
-    if (isFetchingRef.current) {
+    if (isFetchingRef.current && !forceRefresh) {
       console.log('既にデータを取得中です。リクエストをスキップします。');
       return;
     }
@@ -98,7 +106,8 @@ export const AnalyticsDataProvider = ({ children }) => {
       開始日: startDate?.toISOString(),
       終了日: endDate?.toISOString(),
       ユーザーID: currentUser?.uid,
-      カテゴリ数: categories.length
+      カテゴリ数: categories.length,
+      強制更新: forceRefresh
     });
     
     try {
@@ -141,7 +150,17 @@ export const AnalyticsDataProvider = ({ children }) => {
       // パラメータを更新
       lastFetchParams.current = { ...currentParams };
       
-      console.log('分析データの取得が完了しました');
+      // 最終更新日時を更新
+      const now = new Date();
+      console.log('最終更新時刻を設定:', now.toLocaleString());
+      setLastUpdated(now);
+      
+      console.log('分析データの取得が完了しました:', {
+        更新日時: now.toLocaleString(),
+        総学習時間: stats.totalHours,
+        カテゴリ数: Object.keys(stats.categoryHours).length,
+        日別データ数: dailyPoints.length
+      });
     } catch (err) {
       console.error('分析データ取得エラー:', err);
       setError('データの読み込み中にエラーが発生しました。');
@@ -248,6 +267,7 @@ export const AnalyticsDataProvider = ({ children }) => {
   
   // 強制更新用の関数
   const refreshData = useCallback(() => {
+    console.log('refreshData関数が呼び出されました');
     return fetchAnalyticsData(true);
   }, [fetchAnalyticsData]);
   
@@ -261,7 +281,7 @@ export const AnalyticsDataProvider = ({ children }) => {
       },
       dailyData: dailyData.length,
       achievements: Object.keys(achievementData).length,
-      更新時刻: new Date().toISOString()
+      最終更新: lastUpdated ? lastUpdated.toLocaleString() : 'なし'
     });
     
     return {
@@ -271,7 +291,8 @@ export const AnalyticsDataProvider = ({ children }) => {
       achievementData,
       categoryStats,
       dailyData,
-      refreshData
+      refreshData,
+      lastUpdated
     };
   }, [
     isLoading,
@@ -280,7 +301,8 @@ export const AnalyticsDataProvider = ({ children }) => {
     achievementData,
     categoryStats,
     dailyData,
-    refreshData
+    refreshData,
+    lastUpdated
   ]);
   
   return (

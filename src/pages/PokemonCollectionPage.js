@@ -11,13 +11,15 @@ const PokemonCollectionPage = () => {
   useEffect(() => {
     console.log('ポケモンコレクションページ: 全期間データロード状態 =', allTimeLoading);
     console.log('ポケモンコレクションページ: 全期間データ =', allTimeData);
+    console.log('ポケモンコレクションページ: 総学習時間 =', totalStudyHours);
+    console.log('ポケモンコレクションページ: 全期間学習時間 =', allTimeData?.totalHours);
     
     // データがない場合は再取得
-    if (!allTimeData?.totalHours && !allTimeLoading && refreshAllTimeData) {
+    if ((!allTimeData?.totalHours || allTimeData.totalHours === 0) && !allTimeLoading && refreshAllTimeData) {
       console.log('ポケモンコレクションページ: 全期間データを再取得します');
       refreshAllTimeData();
     }
-  }, [allTimeData, allTimeLoading, refreshAllTimeData]);
+  }, [allTimeData, allTimeLoading, refreshAllTimeData, totalStudyHours]);
   
   if (isLoading) {
     return (
