@@ -4,6 +4,7 @@ import { useSchedule } from '../../contexts/ScheduleContext';
 import { useAchievement, ACHIEVEMENT_STATUS, ACHIEVEMENT_ICONS } from '../../contexts/AchievementContext';
 import { useToast } from '../../contexts/ToastContext';
 import { usePokemonAchievement } from '../../contexts/PokemonAchievementContext';
+import { useMilestoneModal } from '../../hooks/useMilestoneModal';
 import { formatDateToString } from '../../utils/timeUtils';
 import { uiLogger } from '../../utils/loggerUtils';
 
@@ -20,6 +21,7 @@ const ScheduleModal = ({ isOpen, onClose, selectedCell, date }) => {
   
   const { showSuccess, showError } = useToast();
   const { checkNewAchievementForPokemon } = usePokemonAchievement();
+  const { checkMilestoneManually } = useMilestoneModal();
 
   const [activeTab, setActiveTab] = useState('schedule');
   const [scheduleInfo, setScheduleInfo] = useState(null);
@@ -165,13 +167,21 @@ const ScheduleModal = ({ isOpen, onClose, selectedCell, date }) => {
     if (!selectedCell || !scheduleInfo || !currentAchievementKey) return;
     
     try {
+      // 変更前の状態をログ出力
       uiLogger.info('実績記録開始', { 
         キー: currentAchievementKey,
-        状態: status
+        状態: status,
+        現在の状態: achievementStatus || '未設定'
       });
       
+      console.log('🔍 実績登録処理開始 - マイルストーンをチェックします');
+      
       // 実績を保存
-      await saveAchievement(currentAchievementKey, status, '');
+      const savedAchievement = await saveAchievement(currentAchievementKey, status, '');
+      
+      // 保存された実績の確認ログ
+      console.log('✅ 実績が登録されました:', savedAchievement);
+      console.log('👉 AchievementContext のコールバックが実行されるはずです');
       
       // 実績データを再取得
       await fetchAchievements();
@@ -181,6 +191,13 @@ const ScheduleModal = ({ isOpen, onClose, selectedCell, date }) => {
       
       // ポケモン獲得をチェック
       const achievedPokemon = checkNewAchievementForPokemon();
+      
+      // マイルストーンもチェック
+      console.log('📈 実績記録後にマイルストーンを手動チェックします');
+      setTimeout(() => {
+        // 少し遅延させて実行し、学習時間の更新が反映されるようにする
+        checkMilestoneManually();
+      }, 500);
       
       // 成功したらモーダルを閉じる
       onClose();

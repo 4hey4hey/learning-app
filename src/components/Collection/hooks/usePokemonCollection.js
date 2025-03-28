@@ -201,19 +201,89 @@ export const usePokemonCollection = () => {
   
   // 新しいポケモン獲得判定（実績入力後に使用）
   const checkNewPokemonAchievement = (hours) => {
+    console.log('🔍 checkNewPokemonAchievement 呼び出し - 学習時間:', hours);
+    
+    // 原因調査のためのデバッグログ
+    console.log('📑 POKEMON_DATA 元データ:', POKEMON_DATA.map(p => ({ 
+      name: p.name, 
+      requiredHours: p.condition.value
+    })));
+    
+    // すべてのポケモンの中で条件を満たすものを手動で探す
+    // 過去のポケモン収集状態に関係なく検索
+    const eligiblePokemons = POKEMON_DATA.filter(pokemon => 
+      pokemon.condition.type === 'totalHours' && 
+      pokemon.condition.value <= hours
+    ).sort((a, b) => a.condition.value - b.condition.value);
+    
+    console.log('❗ 条件を満たすポケモン(生データから直接検索):', 
+      eligiblePokemons.map(p => ({ 
+        name: p.name, 
+        requiredHours: p.condition.value 
+      }))
+    );
+    
+    if (eligiblePokemons.length > 0) {
+      // 原因調査用に最初のポケモンを取得
+      const firstEligible = eligiblePokemons[0];
+      console.log('✅ 条件を満たすポケモン発見(直接検索):', firstEligible.name);
+      
+      // デバッグ用にポケモンの収集状態を確認
+      const pokemonInCollection = pokemonCollection.find(p => p.id === firstEligible.id);
+      console.log('⏰ 収集状態確認:', { 
+        名前: firstEligible.name, 
+        ID: firstEligible.id,
+        コレクションに存在: !!pokemonInCollection,
+        収集済み: pokemonInCollection ? pokemonInCollection.collected : false
+      });
+    }
+    
+    // ------------- 以下、元のロジック -------------
+    
     // まだ獲得していないポケモンを取得
     const unachievedPokemons = pokemonCollection.filter(pokemon => !pokemon.collected);
+    console.log('🔍 獲得していないポケモン数:', unachievedPokemons.length);
     
     // 時間条件でソート（少ない順）
     const sortedPokemons = unachievedPokemons.sort(
       (a, b) => a.condition.value - b.condition.value
     );
     
+    console.log('🔍 ソート済み未獲得ポケモン:', 
+      sortedPokemons.map(p => ({ 
+        name: p.name, 
+        requiredHours: p.condition.value,
+        currentHours: hours,
+        meetsCondition: p.condition.value <= hours
+      }))
+    );
+    
     // 条件を満たす最初のポケモンを見つける
-    return sortedPokemons.find(
+    const achievedPokemon = sortedPokemons.find(
       pokemon => pokemon.condition.type === 'totalHours' && 
                  pokemon.condition.value <= hours
     );
+    
+    // 補正推奨: 上記の直接検索でポケモンが見つかっていて、ここで見つからない場合は、
+    // pokemonCollectionが正しく更新されていない可能性がある
+    if (eligiblePokemons.length > 0 && !achievedPokemon) {
+      console.log('⚠️ 直接検索ではポケモンが見つかったが、コレクションに存在しないか収集済みと認識されています');
+      
+      // 直接探索からポケモンを取得し、オーバーライドする
+      return eligiblePokemons[0];
+    }
+    
+    if (achievedPokemon) {
+      console.log('✅ 新しいポケモン獲得条件達成!', {
+        name: achievedPokemon.name,
+        requiredHours: achievedPokemon.condition.value,
+        currentHours: hours
+      });
+    } else {
+      console.log('❌ 獲得できるポケモンはありません - 現在の学習時間:', hours);
+    }
+    
+    return achievedPokemon;
   };
   
   // 次に獲得できるポケモンを取得

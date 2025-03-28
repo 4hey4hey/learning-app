@@ -40,6 +40,8 @@ function useAchievement() {
 
 // プロバイダーコンポーネント
 function AchievementProvider({ children }) {
+  // 実績登録後のコールバック関数のリスト
+  const [achievementCallbacks, setAchievementCallbacks] = useState([]);
   const { currentUser, demoMode } = useAuth();
   const { getDateSpecificData, setDocument } = useFirestore();
   const { schedule, selectedWeek } = useSchedule();
@@ -229,6 +231,7 @@ function AchievementProvider({ children }) {
 
   // 実績を保存する関数
   const saveAchievement = useCallback(async (uniqueKey, status, comment = '') => {
+    console.log('💾 saveAchievement 開始', { uniqueKey, status, comment });
     if (!uniqueKey || !status) {
       setError('実績の保存に必要なデータが不足しています。');
       return null;
@@ -283,6 +286,21 @@ function AchievementProvider({ children }) {
         }));
         
         achievementLogger.info('実績をローカルストレージに保存しました', { キー: uniqueKey });
+        
+        // コールバックを実行
+        console.log('💬 コールバック実行開始 - コールバック数:', achievementCallbacks.length);
+        achievementCallbacks.forEach((callback, index) => {
+          try {
+            console.log(`🔔 コールバック #${index + 1} 実行中...`);
+            callback(newAchievement);
+            console.log(`✅ コールバック #${index + 1} 実行完了`);
+          } catch (callbackError) {
+            console.error(`⛔ コールバック #${index + 1} エラー:`, callbackError);
+            achievementLogger.error('実績コールバック実行エラー:', callbackError);
+          }
+        });
+        console.log('✅ 全コールバック実行完了');
+        
         return newAchievement;
       }
       
@@ -304,6 +322,16 @@ function AchievementProvider({ children }) {
         }));
         
         achievementLogger.info('実績をFirestoreに保存しました', { キー: uniqueKey });
+        
+        // コールバックを実行
+        achievementCallbacks.forEach(callback => {
+          try {
+            callback(newAchievement);
+          } catch (callbackError) {
+            achievementLogger.error('実績コールバック実行エラー:', callbackError);
+          }
+        });
+        
         return newAchievement;
       }
       
@@ -427,6 +455,40 @@ function AchievementProvider({ children }) {
     achievementLogger.info('実績データをリセットしました');
   }, []);
   
+  // コールバック登録関数
+  const registerAchievementCallback = useCallback((callback) => {
+    console.log('🔗 registerAchievementCallback が呼び出されました');
+    
+    if (typeof callback !== 'function') {
+      console.error('❌ コールバックは関数である必要があります');
+      achievementLogger.error('コールバックは関数である必要があります');
+      return () => {};
+    }
+    
+    console.log('✅ 実績コールバックを登録します - 現在のコールバック数:', achievementCallbacks.length);
+    achievementLogger.debug('実績コールバックを登録しました');
+    
+    // コールバック関数を保存
+    setAchievementCallbacks(prev => {
+      const newCallbacks = [...prev, callback];
+      console.log('💾 更新後のコールバック数:', newCallbacks.length);
+      return newCallbacks;
+    });
+    
+    // クリーンアップ関数を返す
+    return () => {
+      console.log('🚮 実績コールバックを解除します');
+      achievementLogger.debug('実績コールバックを解除しました');
+      
+      // コールバックを削除
+      setAchievementCallbacks(prev => {
+        const filtered = prev.filter(cb => cb !== callback);
+        console.log('💾 解除後のコールバック数:', filtered.length);
+        return filtered;
+      });
+    };
+  }, []);
+
   // プロバイダーのコンテキスト値
   const value = {
     achievements,
@@ -443,7 +505,9 @@ function AchievementProvider({ children }) {
     ACHIEVEMENT_ICONS,
     // 実績のみを集計に含めるかどうかの設定
     includeAchievementsInStats,
-    setIncludeAchievementsInStats
+    setIncludeAchievementsInStats,
+    // コールバック登録関数
+    registerAchievementCallback
   };
 
   return (
