@@ -171,12 +171,8 @@ export function showFinalModal(pokemonData = null) {
   
   // 画像のパスを定義する関数
   const getImagePath = (pokemonId) => {
-    console.log('ポケモンID:', pokemonId);
-    console.log('ポケモンデータ:', pokemon);
-
-    // 直接指定された画像パスがあればそれを使う
-    if (pokemon.imageUrl) {
-      console.log('直接指定された画像パス:', pokemon.imageUrl);
+    // 直接指定された画像パスがあればそれを使う（英数字のみ）
+    if (pokemon.imageUrl && /^[a-zA-Z0-9_.-/]+$/.test(pokemon.imageUrl)) {
       return pokemon.imageUrl;
     }
     
@@ -192,8 +188,6 @@ export function showFinalModal(pokemonData = null) {
 
     // 見つかったデフォルト値
     const defaultPath = `/pokemonimage/pikachu_oiwai.gif`;
-
-    console.log('考慮される画像パス候補:', paths);
     
     // ポケモン要素に応じて適切なパスを返す
     switch(pokemonId) {
@@ -211,7 +205,7 @@ export function showFinalModal(pokemonData = null) {
   
   // 画像ロード時の成功処理
   pokemonImage.onload = () => {
-    console.log('画像読み込み成功:', pokemonImage.src);
+    // 読み込み成功時は何もしない
   };
   
   // 画像のパスを設定
@@ -229,8 +223,6 @@ export function showFinalModal(pokemonData = null) {
   
   // 画像の読み込みエラー時の処理
   pokemonImage.onerror = () => {
-    console.error('画像エラー:', pokemonImage.src);
-    
     // 代替パスを試す
     const alternativePaths = [
       `../pokemonimage/${pokemon.id}01.gif`,
@@ -245,7 +237,6 @@ export function showFinalModal(pokemonData = null) {
     const remainingPaths = alternativePaths.filter(path => !currentPath.endsWith(path));
     
     if (remainingPaths.length > 0) {
-      console.log('代替パスを試します:', remainingPaths[0]);
       pokemonImage.src = remainingPaths[0];
       
       // 次のパス継続のために現在のエラーハンドラを替える
@@ -253,7 +244,6 @@ export function showFinalModal(pokemonData = null) {
         // 次の代替パスがあれば試す
         const nextPaths = remainingPaths.slice(1);
         if (nextPaths.length > 0) {
-          console.log('次の代替パスを試します:', nextPaths[0]);
           pokemonImage.src = nextPaths[0];
           
           // 再帰的に次のパスも試す
@@ -261,25 +251,21 @@ export function showFinalModal(pokemonData = null) {
           if (newAltPaths.length > 0) {
             pokemonImage.onerror = function() {
               // 最後のパスを試す
-              console.log('最後の代替パスを試します:', newAltPaths[0]);
               pokemonImage.src = newAltPaths[0];
               
               // もうパスがない場合は絵文字にフォールバック
               pokemonImage.onerror = function() {
-                console.log('全てのパスが失敗しました。絵文字を表示します。');
                 fallbackToEmoji();
               };
             };
           } else {
             // 代替パスがなくなった場合は絵文字にフォールバック
             pokemonImage.onerror = function() {
-              console.log('全てのパスが失敗しました。絵文字を表示します。');
               fallbackToEmoji();
             };
           }
         } else {
           // 代替パスがなくなった場合は絵文字にフォールバック
-          console.log('代替パスがありません。絵文字を表示します。');
           fallbackToEmoji();
         }
       };
@@ -450,7 +436,6 @@ export function showFinalModal(pokemonData = null) {
   };
   document.addEventListener('keydown', handleEscape);
   
-  console.log(`🎉 ${pokemon.name}のマイルストーンモーダルを表示しました`);
   return () => {
     if (document.body.contains(modal)) {
       document.body.removeChild(modal);

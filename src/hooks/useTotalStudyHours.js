@@ -16,34 +16,56 @@ export const calculateTotalHours = (schedules = {}, achievements = {}, achieveme
   console.log('- 実績ベース表示:', achievementsOnly);
   
   // 実績データの合計数をカウント
-  let totalCompletedHours = 0;
-  let totalPartialHours = 0;
+  let totalCompletedItems = 0;
+  let totalPartialItems = 0;
   
-  // すべての実績データをループ
-  Object.values(achievements).forEach(weekData => {
-    if (!weekData) return;
+  // すべてのスケジュールをループ
+  for (const weekKey in schedules) {
+    const weekSchedule = schedules[weekKey];
     
-    Object.entries(weekData).forEach(([key, achievement]) => {
-      // 'updatedAt'などのシステムフィールドは無視
-      if (key === 'updatedAt' || !achievement || !achievement.status) return;
-      
-      // 実績に基づいてカウント
-      if (achievement.status === 'completed') {
-        totalCompletedHours++;
-      } else if (achievement.status === 'partial') {
-        totalPartialHours++;
+    for (const dayKey in weekSchedule) {
+      for (const hourKey in weekSchedule[dayKey]) {
+        const scheduleItem = weekSchedule[dayKey][hourKey];
+        
+        if (scheduleItem && scheduleItem.categoryId) {
+          try {
+            // 一意のキーを生成
+            const uniqueKey = `${weekKey}_${dayKey}_${hourKey}`;
+            const achievement = achievements[uniqueKey];
+            
+            // 実績ベースか、実績に関わらず全てをカウント
+            const shouldCount = !achievementsOnly || 
+                              (achievement && 
+                               (achievement.status === 'completed' || 
+                                achievement.status === 'partial'));
+            
+            if (shouldCount) {
+              if (achievement && achievement.status === 'completed') {
+                totalCompletedItems++;
+              } else if (achievement && achievement.status === 'partial') {
+                totalPartialItems++;
+              } else {
+                // 実績がない場合も1時間としてカウント
+                totalCompletedItems++;
+              }
+            }
+          } catch (error) {
+            console.error('学習時間計算中のエラー:', error);
+          }
+        }
       }
-    });
-  });
+    }
+  }
   
   // 完了と部分的に完了した時間の合計
-  const totalHours = totalCompletedHours + totalPartialHours;
+  const totalHours = totalCompletedItems + totalPartialItems;
+  
   console.log('独自実装の総学習時間計算結果:');
-  console.log('- 完了時間:', totalCompletedHours);
-  console.log('- 部分完了時間:', totalPartialHours);
+  console.log('- 完了時間:', totalCompletedItems);
+  console.log('- 部分完了時間:', totalPartialItems);
   console.log('- 合計時間:', totalHours);
   
-  return totalHours;
+  return Math.round(totalHours * 10) / 10;
 };
 
 /**
