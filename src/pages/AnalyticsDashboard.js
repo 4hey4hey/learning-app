@@ -13,18 +13,16 @@ const AnalyticsDashboardContent = () => {
 
   // ダッシュボードがマウントされたらデータを更新
   useEffect(() => {
-    console.log('分析ダッシュボード: マウント時にデータを更新します');
     refreshData();
   }, [refreshData]);
 
   // lastUpdatedの変更を監視
   useEffect(() => {
-    console.log('最終更新時刻が変更されました:', lastUpdated);
+    // 最終更新時刻の変更を監視
   }, [lastUpdated]);
 
   // 手動更新ハンドラー
   const handleRefresh = () => {
-    console.log('手動更新を実行します');
     setLastRefresh(new Date());
     refreshData();
   };

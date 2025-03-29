@@ -4,6 +4,9 @@ import { useStudyState } from '../contexts/StudyStateContext';
 import { usePokemonCollection } from '../components/Collection/hooks/usePokemonCollection';
 import { useAchievement } from '../contexts/AchievementContext';
 import { useFirestore } from '../hooks/useFirestore';
+import { useAuth } from '../hooks/useAuth';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../firebase/config';
 
 // ポケモンマイルストーンデータ
 const POKEMON_MILESTONE_DATA = [
@@ -86,14 +89,109 @@ export function useMilestoneModal() {
   const { checkNewPokemonAchievement, pokemonCollection } = usePokemonCollection();
   const { registerAchievementCallback } = useAchievement();
   const { getDocument } = useFirestore();
+  const { currentUser, demoMode } = useAuth();
   const [milestone, setMilestone] = useState(null);
   const [pokemonData, setPokemonData] = useState(POKEMON_MILESTONE_DATA);
+  const [shownMilestones, setShownMilestones] = useState([]);
   
   // コールバック登録を追跡するためのref
   const callbackRegisteredRef = useRef(false);
 
-  // ローカルストレージキー
+  // ローカルストレージキー（フォールバック用）
   const MILESTONE_STORAGE_KEY = 'shown_milestones';
+  
+  // Firebaseから表示済みポケモンのリストを取得
+  const fetchShownMilestones = useCallback(async () => {
+    try {
+      // 非Authenticatedユーザーの場合はローカルストレージを使用
+      if (!currentUser || demoMode) {
+        const localMilestones = JSON.parse(localStorage.getItem(MILESTONE_STORAGE_KEY) || '[]');
+        console.log('ローカルストレージから表示済みマイルストーンを取得:', localMilestones);
+        setShownMilestones(localMilestones);
+        return localMilestones;
+      }
+      
+      try {
+        // Firebaseからデータを取得する試行
+        const achievementsRef = doc(db, `users/${currentUser.uid}/pokemonAchievements/shown`);
+        const achievementsDoc = await getDoc(achievementsRef);
+        
+        if (achievementsDoc.exists() && achievementsDoc.data().list) {
+          const shownList = achievementsDoc.data().list;
+          console.log('Firestoreから表示済みマイルストーンを取得:', shownList);
+          setShownMilestones(shownList);
+          return shownList;
+        } else {
+          // 初期化の必要がある場合
+          console.log('表示済みマイルストーンが存在しないため、初期化します');
+          try {
+            await setDoc(achievementsRef, {
+              list: [],
+              updatedAt: serverTimestamp()
+            });
+          } catch (innerError) {
+            console.error('Firestore初期化エラー:', innerError);
+          }
+          setShownMilestones([]);
+          return [];
+        }
+      } catch (firestoreError) {
+        // Firestoreアクセス時のエラー: 権限不足など
+        console.error('Firestoreアクセスエラー - ローカルストレージにフォールバック:', firestoreError);
+        
+        // ローカルストレージからのフォールバック
+        const localMilestones = JSON.parse(localStorage.getItem(MILESTONE_STORAGE_KEY) || '[]');
+        setShownMilestones(localMilestones);
+        return localMilestones;
+      }
+    } catch (error) {
+      console.error('表示済みマイルストーン取得エラー:', error);
+      
+      // エラー時はローカルストレージにフォールバック
+      const localMilestones = JSON.parse(localStorage.getItem(MILESTONE_STORAGE_KEY) || '[]');
+      setShownMilestones(localMilestones);
+      return localMilestones;
+    }
+  }, [currentUser, demoMode]);
+  
+  // 表示済みポケモンリストを保存
+  const saveShownMilestones = useCallback(async (updatedList) => {
+    try {
+      // セットに変換して重複除去後、配列に戻す
+      const uniqueList = [...new Set(updatedList)];
+      
+      // 非Authenticatedユーザーの場合はローカルストレージを使用
+      if (!currentUser || demoMode) {
+        localStorage.setItem(MILESTONE_STORAGE_KEY, JSON.stringify(uniqueList));
+        console.log('ローカルストレージに表示済みマイルストーンを保存:', uniqueList);
+        setShownMilestones(uniqueList);
+        return true;
+      }
+      
+      // Firebaseに保存
+      const achievementsRef = doc(db, `users/${currentUser.uid}/pokemonAchievements/shown`);
+      await setDoc(achievementsRef, {
+        list: uniqueList,
+        updatedAt: serverTimestamp()
+      });
+      
+      console.log('Firestoreに表示済みマイルストーンを保存:', uniqueList);
+      setShownMilestones(uniqueList);
+      return true;
+    } catch (error) {
+      console.error('表示済みマイルストーン保存エラー:', error);
+      
+      // エラー時はローカルストレージにフォールバック
+      localStorage.setItem(MILESTONE_STORAGE_KEY, JSON.stringify(updatedList));
+      setShownMilestones(updatedList);
+      return false;
+    }
+  }, [currentUser, demoMode]);
+
+  // 初回マウント時に表示済みマイルストーンを取得
+  useEffect(() => {
+    fetchShownMilestones();
+  }, [fetchShownMilestones]);
 
   // Firebaseからポケモンデータを取得
   useEffect(() => {
@@ -116,19 +214,21 @@ export function useMilestoneModal() {
   }, [getDocument]);
 
   // 手動でマイルストーンをチェックする関数
-  const checkManually = useCallback(() => {
+  const checkManually = useCallback(async () => {
     try {
       // 必要な依存関係の確認
       if (!checkNewPokemonAchievement) {
         return null;
       }
       
-      // 表示済みマイルストーンを取得
-      const shownMilestones = 
-        JSON.parse(localStorage.getItem(MILESTONE_STORAGE_KEY) || '[]');
+      // 表示済みマイルストーンを取得（Firestoreから最新の状態を取得）
+      const currentShownMilestones = await fetchShownMilestones();
+      
+      console.log('手動チェック: 表示済みマイルストーン', currentShownMilestones);
       
       // 学習時間の取得
       const effectiveHours = allTimeData?.totalHours || totalStudyHours;
+      console.log('手動チェック: 現在の学習時間', effectiveHours);
       
       // 学習時間に応じて適切なポケモンを選択
       const eligiblePokemons = pokemonData.filter(
@@ -138,9 +238,11 @@ export function useMilestoneModal() {
       if (eligiblePokemons.length > 0) {
         // 条件を満たす最高レベルのポケモンを選択
         const highestPokemon = eligiblePokemons[0];
+        console.log('手動チェック: 最高レベルポケモン', highestPokemon.name, '条件値', highestPokemon.condition.value);
         
-        // まだ表示されていない場合のみ表示
-        if (!shownMilestones.includes(highestPokemon.id)) {
+        // 手動チェックの場合は、表示済みかどうかだけで判断
+        if (!currentShownMilestones.includes(highestPokemon.id)) {
+          console.log('手動チェック: 新規マイルストーン表示します');
           setMilestone(highestPokemon);
           
           // 直接モーダルを表示 (React レンダリングのバックアップとして)
@@ -155,119 +257,121 @@ export function useMilestoneModal() {
           }, 100);
           
           // 表示済みマイルストーンを保存
-          const updatedShownMilestones = [...shownMilestones, highestPokemon.id];
-          localStorage.setItem(
-            MILESTONE_STORAGE_KEY, 
-            JSON.stringify(updatedShownMilestones)
-          );
+          const updatedShownMilestones = [...currentShownMilestones, highestPokemon.id];
+          await saveShownMilestones(updatedShownMilestones);
           
           return highestPokemon;
         } else {
+          // 以前に表示済みの場合
+          console.log('手動チェック: すでに表示済みのマイルストーン');
           setMilestone(highestPokemon);
-          
-          // 直接モーダルを表示
-          setTimeout(() => {
-            if (window.showFinalModal) {
-              window.showFinalModal(highestPokemon);
-              return highestPokemon;
-            }
-          }, 100);
           
           return highestPokemon;
         }
-      }
-      
-      // 通常のポケモンチェック関数を呼び出し
-      const newMilestone = checkNewPokemonAchievement(effectiveHours);
-      
-      if (!newMilestone) {
-        return null;
-      }
-      
-      // まだ表示されていない場合のみ表示
-      if (!shownMilestones.includes(newMilestone.id)) {
-        setMilestone(newMilestone);
-        
-        // 直接モーダルを表示 (React レンダリングのバックアップとして)
-        setTimeout(() => {
-          // 最終モーダルを使用し、ポケモンデータを渡す
-          if (window.showFinalModal) {
-            window.showFinalModal(newMilestone);
-          } else {
-            // フォールバックとして元のメソッドを使用
-            showMilestoneModal(newMilestone);
-          }
-        }, 100);
-        
-        // 表示済みマイルストーンを保存
-        const updatedShownMilestones = [...shownMilestones, newMilestone.id];
-        localStorage.setItem(
-          MILESTONE_STORAGE_KEY, 
-          JSON.stringify(updatedShownMilestones)
-        );
-        
-        return newMilestone;
       } else {
-        return null;
+        console.log('手動チェック: 条件を満たすポケモンがありません');
       }
+      
+      return null;
     } catch (error) {
+      console.error('マイルストーン手動チェックエラー:', error);
       return null;
     }
-  }, [allTimeData, totalStudyHours, checkNewPokemonAchievement, pokemonData]);
+  }, [allTimeData, totalStudyHours, checkNewPokemonAchievement, pokemonData, fetchShownMilestones, saveShownMilestones]);
 
   // すべての表示済みマイルストーンをクリア
-  const clearShownMilestones = useCallback(() => {
-    localStorage.removeItem(MILESTONE_STORAGE_KEY);
-    return true;
-  }, []);
+  const clearShownMilestones = useCallback(async () => {
+    try {
+      // 表示済みリストをクリア
+      await saveShownMilestones([]);
+      
+      // ローカルストレージからも念のためクリア（フォールバック用）
+      localStorage.removeItem(MILESTONE_STORAGE_KEY);
+      // デバッグ用に他の関連キーもクリア
+      localStorage.removeItem('last_checked_study_hours');
+      
+      console.log('マイルストーン表示履歴をクリアしました');
+      return true;
+    } catch (error) {
+      console.error('マイルストーンクリアエラー:', error);
+      return false;
+    }
+  }, [saveShownMilestones]);
 
   // 実績登録後のマイルストーンチェック関数
-  const checkMilestoneAfterAchievement = useCallback((achievement) => {
+  const checkMilestoneAfterAchievement = useCallback(async (achievement) => {
     try {
+      console.log('=== 実績登録後マイルストーンチェック開始 ===');
+      console.log('実績情報:', achievement);
+      
       if (!checkNewPokemonAchievement) {
+        console.log('ポケモンチェック関数が利用できません');
         return;
       }
       
-      // すでに表示済みのマイルストーンを取得
-      const shownMilestones = 
-        JSON.parse(localStorage.getItem(MILESTONE_STORAGE_KEY) || '[]');
+      // すでに表示済みのマイルストーンを取得（Firestoreから最新の状態を取得）
+      const currentShownMilestones = await fetchShownMilestones();
+      console.log('現在の表示済みマイルストーン:', currentShownMilestones);
 
       // 最新の学習時間を取得
-      const effectiveHours = allTimeData?.totalHours || totalStudyHours;
+      const rawTimeData = allTimeData;
+      const directTotalHours = totalStudyHours;
+      
+      console.log('学習時間データ:', rawTimeData);
+      console.log('直接取得した学習時間:', directTotalHours);
+      
+      const effectiveHours = rawTimeData?.totalHours || directTotalHours;
+      console.log('実績登録後チェック: 使用する学習時間値', effectiveHours);
+      
+      // デバッグ用にすべてのポケモンを表示
+      console.log('存在する全ポケモン:', pokemonData.map(p => `${p.name} (${p.condition.value}時間)`).join(', '));
       
       // 学習時間に応じて適切なポケモンを選択
       const eligiblePokemons = pokemonData.filter(
         pokemon => effectiveHours >= pokemon.condition.value
       ).sort((a, b) => b.condition.value - a.condition.value);
       
+      console.log('条件を満たすポケモン数:', eligiblePokemons.length);
+      
       if (eligiblePokemons.length > 0) {
         // 条件を満たす最高レベルのポケモンを選択
         const highestPokemon = eligiblePokemons[0];
+        console.log('適格ポケモン:', highestPokemon.name, '条件値:', highestPokemon.condition.value);
         
-        if (!shownMilestones.includes(highestPokemon.id)) {
+        // 新しいマイルストーンかどうかをチェック
+        const isNewMilestone = !currentShownMilestones.includes(highestPokemon.id);
+        console.log('新規マイルストーンか:', isNewMilestone);
+        
+        // 条件を達成していてまだ表示されていないなら表示
+        if (isNewMilestone) {
+          console.log('マイルストーン表示条件満たす: 表示します');  
           setMilestone(highestPokemon);
   
           // 表示済みマイルストーンを保存
-          const updatedShownMilestones = [...shownMilestones, highestPokemon.id];
-          localStorage.setItem(
-            MILESTONE_STORAGE_KEY, 
-            JSON.stringify(updatedShownMilestones)
-          );
+          const updatedShownMilestones = [...currentShownMilestones, highestPokemon.id];
+          await saveShownMilestones(updatedShownMilestones);
           
           // モーダル表示
           setTimeout(() => {
+            console.log('ポケモンモーダルを表示します:', highestPokemon.name);
             if (window.showFinalModal) {
               window.showFinalModal(highestPokemon);
             } else {
               showMilestoneModal(highestPokemon);
             }
           }, 100);
+        } else {
+          console.log('すでに表示済みのマイルストーンなのでスキップ');
         }
+      } else {
+        console.log('適格ポケモンが見つかりません');
       }
+      
+      console.log('=== 実績登録後マイルストーンチェック終了 ===');
     } catch (error) {
-      // エラー処理
+      console.error('マイルストーンチェックエラー:', error);
     }
-  }, [totalStudyHours, allTimeData, checkNewPokemonAchievement, pokemonData]);
+  }, [totalStudyHours, allTimeData, checkNewPokemonAchievement, pokemonData, fetchShownMilestones, saveShownMilestones]);
 
   // 実績登録コールバックの登録
   useEffect(() => {
@@ -315,45 +419,57 @@ export function useMilestoneModal() {
       return;
     }
     
-    try {
-      // すでに表示済みのマイルストーンを取得
-      const shownMilestones = 
-        JSON.parse(localStorage.getItem(MILESTONE_STORAGE_KEY) || '[]');
-  
-      const effectiveHours = allTimeData?.totalHours || totalStudyHours;
-      
-      // 条件を満たすポケモンを取得（最高レベルのものを優先）
-      const eligiblePokemons = pokemonData.filter(
-        pokemon => effectiveHours >= pokemon.condition.value
-      ).sort((a, b) => b.condition.value - a.condition.value);
-      
-      if (eligiblePokemons.length > 0) {
-        const highestPokemon = eligiblePokemons[0];
+    const checkMilestones = async () => {
+      try {
+        // すでに表示済みのマイルストーンを取得
+        const currentShownMilestones = await fetchShownMilestones();
         
-        if (!shownMilestones.includes(highestPokemon.id)) {
-          setMilestone(highestPokemon);
-  
-          // 表示済みマイルストーンを保存
-          const updatedShownMilestones = [...shownMilestones, highestPokemon.id];
-          localStorage.setItem(
-            MILESTONE_STORAGE_KEY, 
-            JSON.stringify(updatedShownMilestones)
-          );
+        console.log('useEffectバックアップチェック: 表示済みマイルストーン', currentShownMilestones);
+    
+        const effectiveHours = allTimeData?.totalHours || totalStudyHours;
+        console.log('useEffectバックアップチェック: 学習時間', effectiveHours);
+        
+        // 条件を満たすポケモンを取得（最高レベルのものを優先）
+        const eligiblePokemons = pokemonData.filter(
+          pokemon => effectiveHours >= pokemon.condition.value
+        ).sort((a, b) => b.condition.value - a.condition.value);
+        
+        if (eligiblePokemons.length > 0) {
+          const highestPokemon = eligiblePokemons[0];
+          console.log('useEffectチェック: 最高レベルポケモン', highestPokemon.name, '条件値', highestPokemon.condition.value);
           
-          // モーダル表示
-          setTimeout(() => {
-            if (window.showFinalModal) {
-              window.showFinalModal(highestPokemon);
-            } else {
-              showMilestoneModal(highestPokemon);
-            }
-          }, 100);
+          // 新しいマイルストーンかどうかをチェック
+          const isNewMilestone = !currentShownMilestones.includes(highestPokemon.id);
+          
+          if (isNewMilestone) {
+            console.log('useEffectチェック: 新規マイルストーンを表示します');
+            setMilestone(highestPokemon);
+    
+            // 表示済みマイルストーンを保存
+            const updatedShownMilestones = [...currentShownMilestones, highestPokemon.id];
+            await saveShownMilestones(updatedShownMilestones);
+            
+            // モーダル表示
+            setTimeout(() => {
+              if (window.showFinalModal) {
+                window.showFinalModal(highestPokemon);
+              } else {
+                showMilestoneModal(highestPokemon);
+              }
+            }, 100);
+          } else {
+            console.log('useEffectチェック: すでに表示済みです');
+          }
+        } else {
+          console.log('useEffectチェック: 適格ポケモンがありません');
         }
+      } catch (error) {
+        console.error('useEffectマイルストーンチェックエラー:', error);
       }
-    } catch (error) {
-      // エラー処理
-    }
-  }, [totalStudyHours, allTimeData, checkNewPokemonAchievement, pokemonData]);
+    };
+    
+    checkMilestones();
+  }, [totalStudyHours, allTimeData, checkNewPokemonAchievement, pokemonData, fetchShownMilestones, saveShownMilestones]);
 
   const closeMilestoneModal = () => {
     setMilestone(null);

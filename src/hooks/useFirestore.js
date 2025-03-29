@@ -22,7 +22,6 @@ export const useFirestore = () => {
   const [error, setError] = useState(null);
 
   const handleFirestoreError = (error) => {
-    console.error('Firestoreエラー:', error);
     const errorMessages = {
       'permission-denied': 'アクセス権限がありません',
       'not-found': 'データが見つかりません',
@@ -57,10 +56,8 @@ export const useFirestore = () => {
         });
       });
       
-      console.log(`${collectionName} コレクション取得成功:`, documents.length, '件');
       return documents;
     } catch (error) {
-      console.error(`${collectionName} コレクション取得エラー:`, error);
       setError(`コレクションの取得中にエラーが発生しました: ${error.message}`);
       return [];
     } finally {
@@ -82,17 +79,13 @@ export const useFirestore = () => {
       const q = query(collectionRef);
       const querySnapshot = await getDocs(q);
       
-      console.log(`${collectionName} コレクション取得開始: ドキュメント数=${querySnapshot.size}`);
-      
       const documents = {};
       querySnapshot.forEach((doc) => {
         documents[doc.id] = doc.data();
       });
       
-      console.log(`${collectionName} コレクション取得成功: ドキュメント数=${Object.keys(documents).length}`);
       return documents;
     } catch (error) {
-      console.error(`${collectionName} コレクション取得エラー:`, error);
       setError(`コレクションの取得中にエラーが発生しました: ${error.message}`);
       return {};
     } finally {
@@ -112,10 +105,8 @@ export const useFirestore = () => {
     try {
       const docRef = doc(db, `users/${currentUser.uid}/${collectionName}`, documentId);
       await deleteDoc(docRef);
-      console.log(`${collectionName}/${documentId} データ削除成功`);
       return true;
     } catch (error) {
-      console.error(`${collectionName}/${documentId} データ削除エラー:`, error);
       setError(`データの削除中にエラーが発生しました: ${error.message}`);
       return false;
     } finally {
@@ -137,14 +128,11 @@ export const useFirestore = () => {
       const docSnap = await getDoc(docRef);
 
       if (docSnap.exists()) {
-        console.log(`${collectionName}/${documentId} データ取得成功:`, docSnap.id);
         return docSnap.data();
       } else {
-        console.log(`${collectionName}/${documentId} データが存在しません`);
         return null;
       }
     } catch (error) {
-      console.error(`${collectionName}/${documentId} データ取得エラー:`, error);
       setError(`データの取得中にエラーが発生しました: ${error.message}`);
       return null;
     } finally {
@@ -164,10 +152,8 @@ export const useFirestore = () => {
     try {
       const docRef = doc(db, `users/${currentUser.uid}/${collectionName}`, documentId);
       await setDoc(docRef, data);
-      console.log(`${collectionName}/${documentId} データ保存成功`);
       return true;
     } catch (error) {
-      console.error(`${collectionName}/${documentId} データ保存エラー:`, error);
       setError(`データの保存中にエラーが発生しました: ${error.message}`);
       return false;
     } finally {
@@ -239,11 +225,6 @@ export const useFirestore = () => {
       setError(new Error('ユーザーが認証されていません'));
       return {};
     }
-    
-    console.log('実績データ取得開始:', {
-      開始日: startDate,
-      終了日: endDate
-    });
 
     setLoading(true);
     setError(null);
@@ -303,20 +284,10 @@ export const useFirestore = () => {
           });
         }
       }
-
-      console.log('実績データ取得完了:', {
-        件数: Object.keys(achievements).length,
-        サンプル: Object.entries(achievements).slice(0, 3).map(([key, data]) => ({
-          key,
-          categoryId: data.categoryId,
-          status: data.status
-        }))
-      });
       
       return achievements;
     } catch (error) {
       const errorMessage = handleFirestoreError(error);
-      console.error('実績データ取得エラー:', error);
       setError(errorMessage);
       return {};
     } finally {
