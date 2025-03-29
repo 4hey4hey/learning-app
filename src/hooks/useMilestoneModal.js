@@ -14,7 +14,7 @@ const POKEMON_MILESTONE_DATA = [
     condition: { value: 15 },
     element: "fire",
     message: "学習の炎が燃え上がった！",
-    imageUrl: "./pokemonimage/ヒトカゲ01.gif"
+    imageUrl: "/pokemonimage/ヒトカゲ01.gif"
   },
   {
     id: "zenigame",
@@ -23,7 +23,7 @@ const POKEMON_MILESTONE_DATA = [
     condition: { value: 30 },
     element: "water",
     message: "知識の水流が巡り始めた！",
-    imageUrl: "./pokemonimage/ゼニガメ01.gif"
+    imageUrl: "/pokemonimage/ゼニガメ01.gif"
   },
   {
     id: "fushigidane",
@@ -32,7 +32,7 @@ const POKEMON_MILESTONE_DATA = [
     condition: { value: 50 },
     element: "grass",
     message: "学びの種が芽生えた！",
-    imageUrl: "./pokemonimage/フシギダネ01.gif"
+    imageUrl: "/pokemonimage/フシギダネ01.gif"
   },
   {
     id: "pikachu",
@@ -41,7 +41,7 @@ const POKEMON_MILESTONE_DATA = [
     condition: { value: 100 },
     element: "electric",
     message: "ひらめきの電撃が走った！",
-    imageUrl: "./pokemonimage/ピカチュウ_お祝い.gif"
+    imageUrl: "/pokemonimage/ピカチュウ_お祝い.gif"
   },
   {
     id: "nyoromo",
@@ -50,7 +50,7 @@ const POKEMON_MILESTONE_DATA = [
     condition: { value: 150 },
     element: "water",
     message: "学びの深さを知った！",
-    imageUrl: "./pokemonimage/ニョロモ.gif"
+    imageUrl: "/pokemonimage/ニョロモ.gif"
   },
   {
     id: "kodakku",
@@ -59,7 +59,7 @@ const POKEMON_MILESTONE_DATA = [
     condition: { value: 200 },
     element: "water",
     message: "頭の中が整理された！",
-    imageUrl: "./pokemonimage/コダック01.gif"
+    imageUrl: "/pokemonimage/コダック01.gif"
   },
   {
     id: "poppo",
@@ -68,7 +68,7 @@ const POKEMON_MILESTONE_DATA = [
     condition: { value: 250 },
     element: "flying",
     message: "視野が広がった！",
-    imageUrl: "./pokemonimage/ポッポ.gif"
+    imageUrl: "/pokemonimage/ポッポ.gif"
   },
   {
     id: "koiking",
@@ -77,7 +77,7 @@ const POKEMON_MILESTONE_DATA = [
     condition: { value: 300 },
     element: "water",
     message: "継続は力なり！",
-    imageUrl: "./pokemonimage/コイキング01.gif"
+    imageUrl: "/pokemonimage/コイキング01.gif"
   }
 ];
 
