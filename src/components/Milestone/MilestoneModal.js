@@ -34,7 +34,11 @@ const MilestoneModal = ({ milestone, onClose }) => {
             <div className="mb-6">
               <img 
                 src={milestone.imageUrl} 
-                alt="Milestone Reward" 
+                alt={milestone.name}
+                onError={(e) => {
+                  console.error('Image load error:', milestone.imageUrl);
+                  e.target.src = '/pokemonimage/fallback.gif'; // フォールバック画像
+                }}
                 className="mx-auto w-64 h-64 object-contain animate-bounce-slow"
               />
             </div>
