@@ -184,33 +184,27 @@ export function showFinalModal(pokemonData = null) {
     const paths = [
       `pokemonimage/${pokemon.id}.gif`,
       `pokemonimage/${pokemon.id}01.gif`,
-      `pokemonimage/${pokemon.name}.gif`,
-      `pokemonimage/${pokemon.name}01.gif`,
       `./pokemonimage/${pokemon.id}.gif`,
       `./pokemonimage/${pokemon.id}01.gif`,
-      `./pokemonimage/${pokemon.name}.gif`,
-      `./pokemonimage/${pokemon.name}01.gif`,
       `/pokemonimage/${pokemon.id}.gif`,
-      `/pokemonimage/${pokemon.id}01.gif`,
-      `/pokemonimage/${pokemon.name}.gif`,
-      `/pokemonimage/${pokemon.name}01.gif`
+      `/pokemonimage/${pokemon.id}01.gif`
     ];
 
     // 見つかったデフォルト値
-    const defaultPath = `/pokemonimage/ピカチュウ_お祝い.gif`;
+    const defaultPath = `/pokemonimage/pikachu_oiwai.gif`;
 
     console.log('考慮される画像パス候補:', paths);
     
     // ポケモン要素に応じて適切なパスを返す
     switch(pokemonId) {
-      case 'hitokage': return `/pokemonimage/ヒトカゲ01.gif`;
-      case 'zenigame': return `/pokemonimage/ゼニガメ01.gif`;
-      case 'fushigidane': return `/pokemonimage/フシギダネ01.gif`;
-      case 'pikachu': return `/pokemonimage/ピカチュウ_お祝い.gif`;
-      case 'nyoromo': return `/pokemonimage/ニョロモ.gif`;
-      case 'kodakku': return `/pokemonimage/コダック01.gif`;
-      case 'poppo': return `/pokemonimage/ポッポ.gif`;
-      case 'koiking': return `/pokemonimage/コイキング01.gif`;
+      case 'hitokage': return `/pokemonimage/hitokage01.gif`;
+      case 'zenigame': return `/pokemonimage/zenigame01.gif`;
+      case 'fushigidane': return `/pokemonimage/fushigidane01.gif`;
+      case 'pikachu': return `/pokemonimage/pikachu_oiwai.gif`;
+      case 'nyoromo': return `/pokemonimage/nyoromo.gif`;
+      case 'kodakku': return `/pokemonimage/kodakku01.gif`;
+      case 'poppo': return `/pokemonimage/poppo.gif`;
+      case 'koiking': return `/pokemonimage/koiking01.gif`;
       default: return defaultPath;
     }
   };
@@ -239,13 +233,11 @@ export function showFinalModal(pokemonData = null) {
     
     // 代替パスを試す
     const alternativePaths = [
-      `../pokemonimage/${pokemon.name}01.gif`,
-      `../pokemonimage/${pokemon.name}.gif`,
       `../pokemonimage/${pokemon.id}01.gif`,
       `../pokemonimage/${pokemon.id}.gif`,
-      `../../pokemonimage/${pokemon.name}01.gif`,
-      `/pokemonimage/${pokemon.name}01.gif`,
-      `/pokemonimage/${pokemon.id}01.gif`
+      `../../pokemonimage/${pokemon.id}01.gif`,
+      `/pokemonimage/${pokemon.id}01.gif`,
+      `/pokemonimage/${pokemon.id}.gif`
     ];
     
     // 現在のパスを除外
