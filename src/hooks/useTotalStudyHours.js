@@ -58,7 +58,8 @@ export const calculateTotalHours = (schedules = {}, achievements = {}, achieveme
   }
   
   // 完了と部分的に完了した時間の合計
-  const totalHours = totalCompletedItems + totalPartialItems;
+  // 部分的に完了した項目は0.7時間として計算
+  const totalHours = totalCompletedItems + (totalPartialItems * 0.7);
   
   console.log('独自実装の総学習時間計算結果:');
   console.log('- 完了時間:', totalCompletedItems);

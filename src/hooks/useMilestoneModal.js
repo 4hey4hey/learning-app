@@ -5,94 +5,131 @@ import { usePokemonCollection } from '../components/Collection/hooks/usePokemonC
 import { useAchievement } from '../contexts/AchievementContext';
 import { useFirestore } from '../hooks/useFirestore';
 import { useAuth } from '../hooks/useAuth';
+import { useSchedule } from '../contexts/ScheduleContext';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
-
-// ポケモンマイルストーンデータ
-const POKEMON_MILESTONE_DATA = [
-  {
-    id: "hitokage",
-    name: "ヒトカゲ",
-    description: "15時間の学習達成！炎のように熱い学習意欲を持ったヒトカゲをゲット！",
-    condition: { value: 15 },
-    element: "fire",
-    message: "学習の炎が燃え上がった！",
-    imageUrl: "/pokemonimage/ヒトカゲ01.gif"
-  },
-  {
-    id: "zenigame",
-    name: "ゼニガメ",
-    description: "30時間の学習達成！冷静沈着な思考力を持つゼニガメをゲット！",
-    condition: { value: 30 },
-    element: "water",
-    message: "知識の水流が巡り始めた！",
-    imageUrl: "/pokemonimage/ゼニガメ01.gif"
-  },
-  {
-    id: "fushigidane",
-    name: "フシギダネ",
-    description: "50時間の学習達成！知識の種を育てるフシギダネをゲット！",
-    condition: { value: 50 },
-    element: "grass",
-    message: "学びの種が芽生えた！",
-    imageUrl: "/pokemonimage/フシギダネ01.gif"
-  },
-  {
-    id: "pikachu",
-    name: "ピカチュウ",
-    description: "100時間の学習達成！閃きの電気を操るピカチュウをゲット！",
-    condition: { value: 100 },
-    element: "electric",
-    message: "ひらめきの電撃が走った！",
-    imageUrl: "/pokemonimage/ピカチュウ_お祝い.gif"
-  },
-  {
-    id: "nyoromo",
-    name: "ニョロモ",
-    description: "150時間の学習達成！じっくりと学びを深めるニョロモをゲット！",
-    condition: { value: 150 },
-    element: "water",
-    message: "学びの深さを知った！",
-    imageUrl: "/pokemonimage/ニョロモ.gif"
-  },
-  {
-    id: "kodakku",
-    name: "コダック",
-    description: "200時間の学習達成！頭を抱えながらも問題を解決するコダックをゲット！",
-    condition: { value: 200 },
-    element: "water",
-    message: "頭の中が整理された！",
-    imageUrl: "/pokemonimage/コダック01.gif"
-  },
-  {
-    id: "poppo",
-    name: "ポッポ",
-    description: "250時間の学習達成！どこへでも知識を運ぶポッポをゲット！",
-    condition: { value: 250 },
-    element: "flying",
-    message: "視野が広がった！",
-    imageUrl: "/pokemonimage/ポッポ.gif"
-  },
-  {
-    id: "koiking",
-    name: "コイキング",
-    description: "300時間の学習達成！努力の先に大きな成長があるコイキングをゲット！",
-    condition: { value: 300 },
-    element: "water",
-    message: "継続は力なり！",
-    imageUrl: "/pokemonimage/コイキング01.gif"
-  }
-];
+import { POKEMON_DATA } from '../constants/pokemonData';
 
 export function useMilestoneModal() {
   const { totalStudyHours, allTimeData } = useStudyState();
   const { checkNewPokemonAchievement, pokemonCollection } = usePokemonCollection();
-  const { registerAchievementCallback } = useAchievement();
-  const { getDocument } = useFirestore();
+  const { registerAchievementCallback, achievements, fetchAchievements } = useAchievement();
+  const { getDocument, getAllDocuments } = useFirestore();
   const { currentUser, demoMode } = useAuth();
+  const { selectedWeek } = useSchedule();
   const [milestone, setMilestone] = useState(null);
-  const [pokemonData, setPokemonData] = useState(POKEMON_MILESTONE_DATA);
+  // 共通のポケモンデータファイルを使用
+  // 元の状態管理を削除したが、互換性のためローカル変数として保持
+  const pokemonData = POKEMON_DATA;
   const [shownMilestones, setShownMilestones] = useState([]);
+  
+  // 実績から直接学習時間を計算する関数
+  const calculateDirectStudyHours = useCallback(async (latestAchievements = null) => {
+    try {
+      // 非認証ユーザーまたはデモモードの場合は既存の値を使用
+      if (!currentUser || demoMode) {
+        return allTimeData?.totalHours || totalStudyHours;
+      }
+      
+      // 全週の実績データを取得する場合
+      if (!latestAchievements) {
+        try {
+          // 全週の実績データを取得
+          const achievementsData = await getAllDocuments('achievements');
+          if (!achievementsData || Object.keys(achievementsData).length === 0) {
+            return allTimeData?.totalHours || totalStudyHours;
+          }
+          
+          // 実績データを平坦化
+          const flattenedAchievements = processFirestoreAchievements(achievementsData);
+          
+          // 実績ステータスに基づいて学習時間を計算
+          let calculatedHours = 0;
+          let completedCount = 0;
+          let partialCount = 0;
+          let failedCount = 0;
+          
+          Object.values(flattenedAchievements).forEach(achievement => {
+            if (achievement.status === 'completed') {
+              // 完了: 1時間
+              calculatedHours += 1;
+              completedCount++;
+            } else if (achievement.status === 'partial') {
+              // 部分的: 0.7時間
+              calculatedHours += 0.7;
+              partialCount++;
+            } else if (achievement.status === 'failed') {
+              failedCount++;
+            }
+          });
+          
+          // 小数点以下を丸める（小数点第2位まで保持）
+          calculatedHours = Math.round(calculatedHours * 100) / 100;
+          
+          // 計算結果を返す
+          return calculatedHours;
+        } catch (error) {
+          return allTimeData?.totalHours || totalStudyHours;
+        }
+      }
+      
+      // 引数があれば簡易計算を実行
+      const achievementsToUse = latestAchievements || {};
+      
+      // 実績ステータスに基づいて学習時間を計算
+      let calculatedHours = 0;
+      let completedCount = 0;
+      let partialCount = 0;
+      let failedCount = 0;
+      
+      Object.values(achievementsToUse).forEach(achievement => {
+        if (achievement.status === 'completed') {
+          // 完了: 1時間
+          calculatedHours += 1;
+          completedCount++;
+        } else if (achievement.status === 'partial') {
+          // 部分的: 0.7時間
+          calculatedHours += 0.7;
+          partialCount++;
+        } else if (achievement.status === 'failed') {
+          failedCount++;
+        }
+      });
+      
+      // 小数点以下を丸める（小数点第2位まで保持）
+      calculatedHours = Math.round(calculatedHours * 100) / 100;
+      
+      return calculatedHours;
+    } catch (error) {
+      return allTimeData?.totalHours || totalStudyHours;
+    }
+  }, [currentUser, demoMode, allTimeData, totalStudyHours, achievements, getAllDocuments]);
+  
+  // Firestoreの実績データを平坦化する関数
+  const processFirestoreAchievements = useCallback((achievementsData) => {
+    try {
+      const flattenedAchievements = {};
+      
+      // 各週のドキュメントを処理
+      Object.entries(achievementsData).forEach(([weekId, weekData]) => {
+        // 週IDが有効で、weekDataがオブジェクトの場合
+        if (weekId && typeof weekData === 'object' && weekData !== null) {
+          // updatedAt以外の各エントリを処理
+          Object.entries(weekData).forEach(([key, achievement]) => {
+            // updatedAt以外で、実績オブジェクトの場合
+            if (key !== 'updatedAt' && achievement && achievement.status) {
+              // 展開した実績に追加
+              flattenedAchievements[`${weekId}_${key}`] = achievement;
+            }
+          });
+        }
+      });
+      
+      return flattenedAchievements;
+    } catch (error) {
+      return {};
+    }
+  }, []);
   
   // コールバック登録を追跡するためのref
   const callbackRegisteredRef = useRef(false);
@@ -103,10 +140,16 @@ export function useMilestoneModal() {
   // Firebaseから表示済みポケモンのリストを取得
   const fetchShownMilestones = useCallback(async () => {
     try {
+      // 常にローカルストレージのデータを読み込んでおく（フォールバック用）
+      let localMilestones = [];
+      try {
+        localMilestones = JSON.parse(localStorage.getItem(MILESTONE_STORAGE_KEY) || '[]');
+      } catch (localStorageError) {
+        localMilestones = [];
+      }
+
       // 非Authenticatedユーザーの場合はローカルストレージを使用
       if (!currentUser || demoMode) {
-        const localMilestones = JSON.parse(localStorage.getItem(MILESTONE_STORAGE_KEY) || '[]');
-        console.log('ローカルストレージから表示済みマイルストーンを取得:', localMilestones);
         setShownMilestones(localMilestones);
         return localMilestones;
       }
@@ -118,100 +161,121 @@ export function useMilestoneModal() {
         
         if (achievementsDoc.exists() && achievementsDoc.data().list) {
           const shownList = achievementsDoc.data().list;
-          console.log('Firestoreから表示済みマイルストーンを取得:', shownList);
+          
+          // ローカルストレージも更新して同期を維持
+          try {
+            localStorage.setItem(MILESTONE_STORAGE_KEY, JSON.stringify(shownList));
+          } catch (syncError) {
+            // エラー処理
+          }
+          
           setShownMilestones(shownList);
           return shownList;
         } else {
           // 初期化の必要がある場合
-          console.log('表示済みマイルストーンが存在しないため、初期化します');
+          
+          // ローカルストレージに既存のデータがあれば、それをFirestoreの初期値として使用
           try {
             await setDoc(achievementsRef, {
-              list: [],
+              list: localMilestones, // ローカルデータを初期値として使用
               updatedAt: serverTimestamp()
             });
+            setShownMilestones(localMilestones);
+            return localMilestones;
           } catch (innerError) {
-            console.error('Firestore初期化エラー:', innerError);
+            setShownMilestones(localMilestones);
+            return localMilestones;
           }
-          setShownMilestones([]);
-          return [];
         }
       } catch (firestoreError) {
         // Firestoreアクセス時のエラー: 権限不足など
-        console.error('Firestoreアクセスエラー - ローカルストレージにフォールバック:', firestoreError);
-        
-        // ローカルストレージからのフォールバック
-        const localMilestones = JSON.parse(localStorage.getItem(MILESTONE_STORAGE_KEY) || '[]');
         setShownMilestones(localMilestones);
         return localMilestones;
       }
     } catch (error) {
-      console.error('表示済みマイルストーン取得エラー:', error);
-      
-      // エラー時はローカルストレージにフォールバック
-      const localMilestones = JSON.parse(localStorage.getItem(MILESTONE_STORAGE_KEY) || '[]');
-      setShownMilestones(localMilestones);
-      return localMilestones;
+      // 最終手段としてデフォルト値を返す
+      try {
+        const localMilestones = JSON.parse(localStorage.getItem(MILESTONE_STORAGE_KEY) || '[]');
+        setShownMilestones(localMilestones);
+        return localMilestones;
+      } catch (finalError) {
+        setShownMilestones([]);
+        return [];
+      }
     }
   }, [currentUser, demoMode]);
   
   // 表示済みポケモンリストを保存
   const saveShownMilestones = useCallback(async (updatedList) => {
     try {
+      // 連続するエラーを貴重なユーザーデータの喪失となるのを防ぐため、入力値を検証
+      if (!Array.isArray(updatedList)) {
+        // 古い値を取得して使用
+        const existingList = await fetchShownMilestones();
+        return existingList.length > 0; // 古い値が存在すれば成功とみなす
+      }
+      
       // セットに変換して重複除去後、配列に戻す
       const uniqueList = [...new Set(updatedList)];
       
-      // 非Authenticatedユーザーの場合はローカルストレージを使用
-      if (!currentUser || demoMode) {
+      // まずは常にローカルストレージに保存する（フォールバック用）
+      try {
         localStorage.setItem(MILESTONE_STORAGE_KEY, JSON.stringify(uniqueList));
-        console.log('ローカルストレージに表示済みマイルストーンを保存:', uniqueList);
+      } catch (localStorageError) {
+        // ローカルストレージに保存できなくても続行
+      }
+      
+      // 非Authenticatedユーザーの場合はローカルストレージのみを使用
+      if (!currentUser || demoMode) {
         setShownMilestones(uniqueList);
         return true;
       }
       
-      // Firebaseに保存
-      const achievementsRef = doc(db, `users/${currentUser.uid}/pokemonAchievements/shown`);
-      await setDoc(achievementsRef, {
-        list: uniqueList,
-        updatedAt: serverTimestamp()
-      });
-      
-      console.log('Firestoreに表示済みマイルストーンを保存:', uniqueList);
-      setShownMilestones(uniqueList);
-      return true;
+      try {
+        // Firestoreに保存する試行
+        const achievementsRef = doc(db, `users/${currentUser.uid}/pokemonAchievements/shown`);
+        await setDoc(achievementsRef, {
+          list: uniqueList,
+          updatedAt: serverTimestamp()
+        });
+        
+        setShownMilestones(uniqueList);
+        return true;
+      } catch (firestoreError) {
+        // Firestore保存エラー時はローカルストレージのみで成功とみなす
+        
+        setShownMilestones(uniqueList);
+        // ローカルストレージには保存できたので成功扱い
+        return true;
+      }
     } catch (error) {
-      console.error('表示済みマイルストーン保存エラー:', error);
-      
-      // エラー時はローカルストレージにフォールバック
-      localStorage.setItem(MILESTONE_STORAGE_KEY, JSON.stringify(updatedList));
-      setShownMilestones(updatedList);
-      return false;
+      try {
+        // 最終手段としてローカルストレージへの保存を試行
+        localStorage.setItem(MILESTONE_STORAGE_KEY, JSON.stringify(updatedList));
+        setShownMilestones(updatedList);
+        return true;
+      } catch (localStorageError) {
+        return false;
+      }
     }
-  }, [currentUser, demoMode]);
+  }, [currentUser, demoMode, fetchShownMilestones]);
 
   // 初回マウント時に表示済みマイルストーンを取得
   useEffect(() => {
     fetchShownMilestones();
   }, [fetchShownMilestones]);
 
-  // Firebaseからポケモンデータを取得
+  // 実績データが更新されたときにデバッグ情報を出力する
   useEffect(() => {
-    const fetchPokemonData = async () => {
-      try {
-        // Firebaseからポケモンデータを取得しようとする
-        // 取得に失敗した場合はデフォルトデータを使用
-        const remoteData = await getDocument('pokemons', 'data');
-        
-        if (remoteData && remoteData.pokemonList && remoteData.pokemonList.length > 0) {
-          setPokemonData(remoteData.pokemonList);
-        }
-        // デフォルトでは元のデータをそのまま使用
-      } catch (error) {
-        // エラー時は元のデータをそのまま使用
-      }
-    };
-    
-    fetchPokemonData();
-  }, [getDocument]);
+    // 実績データが変更されたときに計算を行う
+    if (achievements) {
+      // 実績数に基づいて学習時間を計算
+      calculateDirectStudyHours();
+    }
+  }, [achievements, calculateDirectStudyHours]);
+  
+
+  // 注釈: 共通のポケモンデータファイルを使用するため、Firebaseからの取得処理を削除
 
   // 手動でマイルストーンをチェックする関数
   const checkManually = useCallback(async () => {
@@ -224,25 +288,24 @@ export function useMilestoneModal() {
       // 表示済みマイルストーンを取得（Firestoreから最新の状態を取得）
       const currentShownMilestones = await fetchShownMilestones();
       
-      console.log('手動チェック: 表示済みマイルストーン', currentShownMilestones);
+      // 全期間の実績データを取得して学習時間を計算
+      const manualCalculatedHours = await calculateDirectStudyHours();
       
-      // 学習時間の取得
-      const effectiveHours = allTimeData?.totalHours || totalStudyHours;
-      console.log('手動チェック: 現在の学習時間', effectiveHours);
-      
+      // 他のソースからの学習時間と比較
+      // 実績から直接計算した値を優先し、それがない場合は他ソースから取得
+      const effectiveHours = manualCalculatedHours > 0 ? manualCalculatedHours : (allTimeData?.totalHours || totalStudyHours);
+
       // 学習時間に応じて適切なポケモンを選択
-      const eligiblePokemons = pokemonData.filter(
+      const eligiblePokemons = POKEMON_DATA.filter(
         pokemon => effectiveHours >= pokemon.condition.value
       ).sort((a, b) => b.condition.value - a.condition.value);
       
       if (eligiblePokemons.length > 0) {
         // 条件を満たす最高レベルのポケモンを選択
         const highestPokemon = eligiblePokemons[0];
-        console.log('手動チェック: 最高レベルポケモン', highestPokemon.name, '条件値', highestPokemon.condition.value);
         
         // 手動チェックの場合は、表示済みかどうかだけで判断
         if (!currentShownMilestones.includes(highestPokemon.id)) {
-          console.log('手動チェック: 新規マイルストーン表示します');
           setMilestone(highestPokemon);
           
           // 直接モーダルを表示 (React レンダリングのバックアップとして)
@@ -263,88 +326,86 @@ export function useMilestoneModal() {
           return highestPokemon;
         } else {
           // 以前に表示済みの場合
-          console.log('手動チェック: すでに表示済みのマイルストーン');
           setMilestone(highestPokemon);
           
           return highestPokemon;
         }
-      } else {
-        console.log('手動チェック: 条件を満たすポケモンがありません');
       }
       
       return null;
     } catch (error) {
-      console.error('マイルストーン手動チェックエラー:', error);
       return null;
     }
-  }, [allTimeData, totalStudyHours, checkNewPokemonAchievement, pokemonData, fetchShownMilestones, saveShownMilestones]);
+  }, [allTimeData, totalStudyHours, checkNewPokemonAchievement, fetchShownMilestones, saveShownMilestones, calculateDirectStudyHours]); // pokemonDataをPOKEMON_DATAに変更したため依存配列から削除
 
   // すべての表示済みマイルストーンをクリア
   const clearShownMilestones = useCallback(async () => {
     try {
-      // 表示済みリストをクリア
-      await saveShownMilestones([]);
+      // まずローカルストレージからクリア
+      try {
+        localStorage.removeItem(MILESTONE_STORAGE_KEY);
+        // デバッグ用に他の関連キーもクリア
+        localStorage.removeItem('last_checked_study_hours');
+      } catch (localStorageError) {
+        // ローカルストレージのクリアに失敗しても続行
+      }
       
-      // ローカルストレージからも念のためクリア（フォールバック用）
-      localStorage.removeItem(MILESTONE_STORAGE_KEY);
-      // デバッグ用に他の関連キーもクリア
-      localStorage.removeItem('last_checked_study_hours');
+      // 内部状態をクリア
+      setShownMilestones([]);
       
-      console.log('マイルストーン表示履歴をクリアしました');
-      return true;
+      // 非Authenticatedユーザーの場合はローカルストレージのクリアのみ
+      if (!currentUser || demoMode) {
+        return true;
+      }
+      
+      try {
+        // Firestoreのデータもクリアする試行
+        const achievementsRef = doc(db, `users/${currentUser.uid}/pokemonAchievements/shown`);
+        await setDoc(achievementsRef, {
+          list: [],
+          updatedAt: serverTimestamp()
+        });
+        return true;
+      } catch (firestoreError) {
+        // ローカルストレージは既にクリア済みなので成功とみなす
+        return true;
+      }
     } catch (error) {
-      console.error('マイルストーンクリアエラー:', error);
       return false;
     }
-  }, [saveShownMilestones]);
+  }, [currentUser, demoMode]);
 
   // 実績登録後のマイルストーンチェック関数
   const checkMilestoneAfterAchievement = useCallback(async (achievement) => {
     try {
-      console.log('=== 実績登録後マイルストーンチェック開始 ===');
-      console.log('実績情報:', achievement);
-      
       if (!checkNewPokemonAchievement) {
-        console.log('ポケモンチェック関数が利用できません');
         return;
       }
       
       // すでに表示済みのマイルストーンを取得（Firestoreから最新の状態を取得）
       const currentShownMilestones = await fetchShownMilestones();
-      console.log('現在の表示済みマイルストーン:', currentShownMilestones);
 
-      // 最新の学習時間を取得
-      const rawTimeData = allTimeData;
-      const directTotalHours = totalStudyHours;
+      // 全期間の実績データを取得して学習時間を計算
+      const manualCalculatedHours = await calculateDirectStudyHours();
       
-      console.log('学習時間データ:', rawTimeData);
-      console.log('直接取得した学習時間:', directTotalHours);
-      
-      const effectiveHours = rawTimeData?.totalHours || directTotalHours;
-      console.log('実績登録後チェック: 使用する学習時間値', effectiveHours);
-      
-      // デバッグ用にすべてのポケモンを表示
-      console.log('存在する全ポケモン:', pokemonData.map(p => `${p.name} (${p.condition.value}時間)`).join(', '));
+      // 最適な学習時間を選択（全期間計算を優先）
+      // 実績登録直後は、全期間計算結果を必ず優先する
+      const effectiveHours = manualCalculatedHours > 0 ? manualCalculatedHours : (allTimeData?.totalHours || totalStudyHours);
       
       // 学習時間に応じて適切なポケモンを選択
-      const eligiblePokemons = pokemonData.filter(
+      const eligiblePokemons = POKEMON_DATA.filter(
         pokemon => effectiveHours >= pokemon.condition.value
       ).sort((a, b) => b.condition.value - a.condition.value);
-      
-      console.log('条件を満たすポケモン数:', eligiblePokemons.length);
       
       if (eligiblePokemons.length > 0) {
         // 条件を満たす最高レベルのポケモンを選択
         const highestPokemon = eligiblePokemons[0];
-        console.log('適格ポケモン:', highestPokemon.name, '条件値:', highestPokemon.condition.value);
         
         // 新しいマイルストーンかどうかをチェック
         const isNewMilestone = !currentShownMilestones.includes(highestPokemon.id);
-        console.log('新規マイルストーンか:', isNewMilestone);
         
         // 条件を達成していてまだ表示されていないなら表示
         if (isNewMilestone) {
-          console.log('マイルストーン表示条件満たす: 表示します');  
           setMilestone(highestPokemon);
   
           // 表示済みマイルストーンを保存
@@ -353,25 +414,18 @@ export function useMilestoneModal() {
           
           // モーダル表示
           setTimeout(() => {
-            console.log('ポケモンモーダルを表示します:', highestPokemon.name);
             if (window.showFinalModal) {
               window.showFinalModal(highestPokemon);
             } else {
               showMilestoneModal(highestPokemon);
             }
           }, 100);
-        } else {
-          console.log('すでに表示済みのマイルストーンなのでスキップ');
         }
-      } else {
-        console.log('適格ポケモンが見つかりません');
       }
-      
-      console.log('=== 実績登録後マイルストーンチェック終了 ===');
     } catch (error) {
-      console.error('マイルストーンチェックエラー:', error);
+      // エラー処理
     }
-  }, [totalStudyHours, allTimeData, checkNewPokemonAchievement, pokemonData, fetchShownMilestones, saveShownMilestones]);
+  }, [totalStudyHours, allTimeData, checkNewPokemonAchievement, fetchShownMilestones, saveShownMilestones, calculateDirectStudyHours]); // pokemonDataをPOKEMON_DATAに変更したため依存配列から削除
 
   // 実績登録コールバックの登録
   useEffect(() => {
@@ -424,25 +478,24 @@ export function useMilestoneModal() {
         // すでに表示済みのマイルストーンを取得
         const currentShownMilestones = await fetchShownMilestones();
         
-        console.log('useEffectバックアップチェック: 表示済みマイルストーン', currentShownMilestones);
-    
-        const effectiveHours = allTimeData?.totalHours || totalStudyHours;
-        console.log('useEffectバックアップチェック: 学習時間', effectiveHours);
+        // 全期間の実績から学習時間を計算
+        const manualCalculatedHours = await calculateDirectStudyHours();
+        
+        // 他のソースからの学習時間と比較し、最適な値を選択
+        const effectiveHours = manualCalculatedHours > 0 ? manualCalculatedHours : (allTimeData?.totalHours || totalStudyHours);
         
         // 条件を満たすポケモンを取得（最高レベルのものを優先）
-        const eligiblePokemons = pokemonData.filter(
+        const eligiblePokemons = POKEMON_DATA.filter(
           pokemon => effectiveHours >= pokemon.condition.value
         ).sort((a, b) => b.condition.value - a.condition.value);
         
         if (eligiblePokemons.length > 0) {
           const highestPokemon = eligiblePokemons[0];
-          console.log('useEffectチェック: 最高レベルポケモン', highestPokemon.name, '条件値', highestPokemon.condition.value);
           
           // 新しいマイルストーンかどうかをチェック
           const isNewMilestone = !currentShownMilestones.includes(highestPokemon.id);
           
           if (isNewMilestone) {
-            console.log('useEffectチェック: 新規マイルストーンを表示します');
             setMilestone(highestPokemon);
     
             // 表示済みマイルストーンを保存
@@ -457,19 +510,15 @@ export function useMilestoneModal() {
                 showMilestoneModal(highestPokemon);
               }
             }, 100);
-          } else {
-            console.log('useEffectチェック: すでに表示済みです');
           }
-        } else {
-          console.log('useEffectチェック: 適格ポケモンがありません');
         }
       } catch (error) {
-        console.error('useEffectマイルストーンチェックエラー:', error);
+        // エラー処理
       }
     };
     
     checkMilestones();
-  }, [totalStudyHours, allTimeData, checkNewPokemonAchievement, pokemonData, fetchShownMilestones, saveShownMilestones]);
+  }, [totalStudyHours, allTimeData, checkNewPokemonAchievement, fetchShownMilestones, saveShownMilestones, calculateDirectStudyHours]); // pokemonDataをPOKEMON_DATAに変更したため依存配列から削除
 
   const closeMilestoneModal = () => {
     setMilestone(null);
@@ -497,6 +546,6 @@ export function useMilestoneModal() {
     checkMilestoneManually: checkManually, // 手動チェック関数を返す
     clearShownMilestones, // 表示済みマイルストーンクリア関数
     showMilestoneDirectly, // 直接モーダルを表示する関数
-    pokemonData // 現在のポケモンデータを返す
+    pokemonData // 共通のポケモンデータを返す
   };
 }

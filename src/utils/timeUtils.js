@@ -128,7 +128,11 @@ const TimeUtils = {
                                   (achievement.status === 'completed' || achievement.status === 'partial'));
             
             if (shouldInclude) {
-              categoryHoursMap[scheduleItem.categoryId] += 60;
+              if (achievement && achievement.status === 'partial') {
+                categoryHoursMap[scheduleItem.categoryId] += 42; // 60 * 0.7 = 42 分
+              } else {
+                categoryHoursMap[scheduleItem.categoryId] += 60; // 完了または実績なしの場合は60分
+              }
             }
           } catch (error) {
             dateLogger.error('時間計算中にエラーが発生しました:', error, '項目:', scheduleItem);
@@ -165,7 +169,11 @@ const TimeUtils = {
                                (achievement.status === 'completed' || achievement.status === 'partial'));
                                
             if (shouldCount) {
-              totalMinutes += 60;
+              if (achievement && achievement.status === 'partial') {
+                totalMinutes += 42; // 60 * 0.7 = 42 分
+              } else {
+                totalMinutes += 60; // 完了または実績なしの場合は60分
+              }
             }
           } catch (error) {
             dateLogger.error('時間計算中のエラー:', error, '項目:', scheduleItem);
@@ -174,7 +182,7 @@ const TimeUtils = {
       }
     }
     
-    return Math.round(totalMinutes / 60 * 10) / 10;
+    return totalMinutes / 60;
   },
 
   calculateTotalStudyHours: (
@@ -212,12 +220,17 @@ const TimeUtils = {
               const uniqueKey = TimeUtils.generateScheduleKey(scheduleItem.date, dayKey, hourKey);
               const achievement = weekAchievements[uniqueKey];
               
+              // 部分的に完了(partial)の場合は0.7時間としてカウント
               const valid = !includeAchievementsInStats || 
                           (includeAchievementsInStats && achievement && 
                           (achievement.status === 'completed' || achievement.status === 'partial'));
                          
               if (valid) {
-                validItemsInWeek++;
+                if (achievement && achievement.status === 'partial') {
+                  validItemsInWeek += 0.7; // 部分的に完了の場合は0.7時間
+                } else {
+                  validItemsInWeek++; // 完了または実績なしの場合は1時間
+                }
               }
             } catch (error) {
               dateLogger.error('時間計算エラー:', error, dayKey, hourKey);
@@ -229,7 +242,7 @@ const TimeUtils = {
       totalHours += validItemsInWeek;
     }
     
-    return Math.round(totalHours * 10) / 10;
+    return totalHours;
   },
 
   calculateMonthStudyHours: (
@@ -255,7 +268,7 @@ const TimeUtils = {
       dateLogger.error('月間学習時間計算中にエラーが発生しました:', error);
     }
     
-    return Math.round(totalMonthHours * 10) / 10;
+    return totalMonthHours;
   },
 
   debugAchievementStructure: (allAchievements) => {

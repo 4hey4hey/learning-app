@@ -30,6 +30,10 @@ service cloud.firestore {
         allow read, write: if isUserAuthenticated(userId);
       }
       
+      match /pokemonAchievements/{docId} {
+        allow read, write: if isUserAuthenticated(userId);
+      }
+      
       // ユーザードキュメント自体へのアクセス
       allow read, write: if isUserAuthenticated(userId);
     }

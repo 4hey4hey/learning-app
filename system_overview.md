@@ -37,6 +37,11 @@
    - 週間・月間の総学習時間
    - 実績記録率の表示
 
+5. **ポケモンコレクション機能**
+   - 学習時間の累計に応じてポケモンを獲得
+   - 獲得したポケモンをコレクションとして表示
+   - マイルストーン達成時の特別ポケモン報酬
+
 ## 🧩 アーキテクチャ詳細
 
 ### コンテキスト階層構造
@@ -72,7 +77,12 @@
 8. **DateRangeContext**
    - 日付範囲選択の管理
 
-9. **StudyStateProvider**（最下位）
+9. **PokemonContext** / **PokemonAchievementContext**
+   - ポケモンコレクション機能の管理
+   - 学習時間に応じたポケモン獲得判定
+   - マイルストーンの管理
+
+10. **StudyStateProvider**（最下位）
    - 複数コンテキスト間のデータ集約
    - 統計計算の中央管理
 
@@ -96,10 +106,11 @@ User Actions → Components → Context API → Firebase Service → Firestore
 
 ```
 users/{userId}/
-  ├── categories/{categoryId}     # カテゴリ情報
-  ├── schedules/{weekId}          # 週間スケジュール
-  ├── achievements/{achievementId} # 達成記録 
-  └── templates/{templateId}      # テンプレート
+  ├── categories/{categoryId}       # カテゴリ情報
+  ├── schedules/{weekId}            # 週間スケジュール
+  ├── achievements/{achievementId}  # 達成記録 
+  ├── templates/{templateId}        # テンプレート
+  └── pokemonCollection/{pokemonId} # ポケモンコレクション
 ```
 
 ### 主要データ構造
@@ -142,6 +153,21 @@ users/{userId}/
 }
 ```
 
+#### ポケモンコレクションデータ
+```javascript
+{
+  id: "pokemon_001",
+  name: "ピカチュウ",
+  imageUrl: "https://example.com/pikachu.png",
+  element: "electric",    // "タイプ（fire, water, grass, electric など）"
+  description: "電気タイプのポケモン。頭上から電気を放つ。",
+  message: "もっと学習を続けるピカ！",
+  condition: { type: "studyHours", value: 10 },  // 獲得条件
+  acquiredAt: Timestamp,
+  displayOrder: 1
+}
+```
+
 ## 🔄 主要コンポーネント詳細
 
 ### WeeklyCalendar.js
@@ -171,6 +197,12 @@ users/{userId}/
 - 完了/部分的/未達成のステータス設定
 - コメント入力機能
 - 実績記録率の表示
+
+### PokemonCollection.js
+ポケモンコレクションの表示と管理。
+- 獲得済みポケモンのグリッド表示
+- タイプ別フィルタリング
+- ポケモン詳細情報のモーダル表示
 
 ## ⚙️ 重要なユーティリティ機能
 
@@ -241,6 +273,11 @@ Firebaseセキュリティルールにより、各ユーザーは自分のデー
 4. **モバイル対応（PWA）**
    - 既存のレスポンシブデザインを拡張
    - オフライン機能の強化
+   
+5. **ポケモン対戦機能**
+   - 学習時間と実績に応じたポケモン育成
+   - ユーザー間対戦・交換機能
+   - ポケモン育成と学習管理の統合
 
 ## 🐞 潜在的な課題と対策
 

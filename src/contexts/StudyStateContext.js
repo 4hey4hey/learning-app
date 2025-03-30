@@ -123,8 +123,8 @@ export const StudyStateProvider = ({ children }) => {
         }
         // それでもゼロなら手動カウントの値を使用
         else if (manualCompletedCount > 0 || manualPartialCount > 0) {
-          // 1実績=1時間として計算
-          calculatedTotalHours = manualCompletedCount + manualPartialCount;
+        // 部分的完了は0.7として計算
+        calculatedTotalHours = manualCompletedCount + (manualPartialCount * 0.7);
         }
       }
       

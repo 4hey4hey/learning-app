@@ -1,7 +1,7 @@
 import React from 'react';
 import MainLayout from '../components/Layout/MainLayout';
 import PokemonCollection from '../components/Collection/PokemonCollection';
-import AllTimeStats from '../components/Collection/AllTimeStats';
+// AllTimeStats import削除
 import { useStudyState } from '../contexts/StudyStateContext';
 import { useMilestoneModal } from '../hooks/useMilestoneModal';
 
@@ -26,8 +26,7 @@ const PokemonCollectionPage = () => {
         <p className="text-gray-600">学習の進捗に応じてポケモンをコレクションしよう！</p>
       </div>
       
-      {/* 全期間統計を追加 */}
-      <AllTimeStats />
+      {/* 全期間統計コンポーネント削除 */}
       
       <PokemonCollection />
       

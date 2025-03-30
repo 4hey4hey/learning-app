@@ -3,7 +3,7 @@ import { useStudyState } from '../../contexts/StudyStateContext';
 import { usePokemonCollection } from './hooks/usePokemonCollection';
 
 const PokemonCollection = () => {
-  const { totalStudyHours, allTimeData } = useStudyState();
+  const { totalStudyHours } = useStudyState();
   const { pokemonCollection, loading, error, effectiveStudyHours } = usePokemonCollection();
   const [selectedBadge, setSelectedBadge] = useState(null);
   
@@ -37,12 +37,12 @@ const PokemonCollection = () => {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="font-bold text-lg text-blue-800">現在の累計学習時間</h2>
-                <p className="text-3xl font-bold text-blue-600">{effectiveStudyHours}時間</p>
+                <p className="text-3xl font-bold text-blue-600">{Math.round(effectiveStudyHours * 10) / 10}時間</p>
               </div>
               {nextBadge && (
                 <div className="text-right">
                   <p className="text-sm text-gray-600">次のポケモンまで</p>
-                  <p className="text-xl font-bold text-green-600">あと{nextBadge.condition.value - effectiveStudyHours}時間</p>
+                  <p className="text-xl font-bold text-green-600">あと{Math.round((nextBadge.condition.value - effectiveStudyHours) * 10) / 10}時間</p>
                   <p className="text-xs text-gray-500">（{nextBadge.name}: {nextBadge.condition.value}時間）</p>
                 </div>
               )}
@@ -94,11 +94,7 @@ const PokemonCollection = () => {
                     <>
                       <div className="w-full h-32 flex items-center justify-center bg-gray-200 rounded-md mb-2 relative">
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <img
-                            src={badge.imageUrl}
-                            alt={badge.name}
-                            className="w-full h-full object-contain opacity-10"
-                          />
+                          {/* 透かし画像を表示しないように修正 */}
                         </div>
                         <div className="absolute inset-0 bg-white bg-opacity-70 flex items-center justify-center">
                           <span className="text-gray-500 font-bold text-xl">???</span>

@@ -195,9 +195,10 @@ const ScheduleModal = ({ isOpen, onClose, selectedCell, date }) => {
       // マイルストーンもチェック
       console.log('📈 実績記録後にマイルストーンを手動チェックします');
       setTimeout(() => {
-        // 少し遅延させて実行し、学習時間の更新が反映されるようにする
+        // 遅延を増加させて実行し、Firestoreからのデータ同期が確実に完了するようにする
+        console.log('⏱️ マイルストーンチェック実行（遅延後）');
         checkMilestoneManually();
-      }, 500);
+      }, 1000); // 500ms→1000msに増加
       
       // 成功したらモーダルを閉じる
       onClose();

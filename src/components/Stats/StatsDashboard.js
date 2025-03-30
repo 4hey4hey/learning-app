@@ -16,7 +16,9 @@ const StatsDashboard = () => {
   const { 
     includeAchievementsInStats,
     categoryHours, 
-    weekTotalHours
+    weekTotalHours,
+    totalStudyHours,
+    allTimeData
   } = useStudyState();
   const { categories } = useCategory();
   const { schedule } = useSchedule();
@@ -156,6 +158,12 @@ const StatsDashboard = () => {
   
   const recordRate = calculateRecordRate();
   
+  // 学習時間のデバッグ出力
+  useEffect(() => {
+    console.log('StatsDashboard - totalStudyHours:', totalStudyHours);
+    console.log('StatsDashboard - allTimeData:', allTimeData);
+  }, [totalStudyHours, allTimeData]);
+  
   return (
     <div className="bg-white rounded-lg shadow p-4 print:hidden">
       <h2 className="text-lg font-bold text-gray-800 mb-4">📊 勉強時間集計</h2>
@@ -173,6 +181,17 @@ const StatsDashboard = () => {
               <p className="text-sm text-gray-600">今週</p>
               <p className="text-2xl font-bold text-green-600">{weekTotal}時間</p>
             </div>
+          </div>
+          
+          {/* 累計学習時間カード */}
+          <div className="mb-4 text-center p-3 bg-purple-50 rounded">
+            <p className="text-sm text-gray-600">累計学習時間</p>
+            <p className="text-2xl font-bold text-purple-600">
+              {Math.round((allTimeData?.totalHours || 0) * 10) / 10} 時間
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              これまでの総学習時間
+            </p>
           </div>
           
           <div className="mb-4 text-center p-3 bg-yellow-50 rounded">

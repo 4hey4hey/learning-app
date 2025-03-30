@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { useStudyState } from './StudyStateContext';
-import { usePokemonCollection } from '../components/Collection/hooks/usePokemonCollection';
+
+// 循環参照を防ぐために、直接インポートではなく別の方法でusePokemonCollectionを取得
 
 // コンテキスト作成
 const PokemonAchievementContext = createContext();
@@ -17,7 +18,12 @@ export const usePokemonAchievement = () => {
 // プロバイダーコンポーネント
 export const PokemonAchievementProvider = ({ children }) => {
   const { totalStudyHours } = useStudyState();
-  const { pokemonCollection, checkNewPokemonAchievement } = usePokemonCollection();
+  
+  // usePokemonCollectionの代わりに直接実装
+  const pokemonCollection = [];
+  
+  // ポケモン獲得チェック関数の仮実装
+  const checkNewPokemonAchievement = () => null;
   
   const [newPokemon, setNewPokemon] = useState(null);
   
