@@ -286,6 +286,12 @@ function AchievementProvider({ children }) {
         
         achievementLogger.info('実績をローカルストレージに保存しました', { キー: uniqueKey });
         
+        // 実績登録完了イベントを発行
+        window.dispatchEvent(new CustomEvent('achievementDataChanged', {
+          detail: { achievement: newAchievement, type: 'save' }
+        }));
+        achievementLogger.info('実績データ変更イベントを発行しました', { type: 'save' });
+        
         // コールバックを実行
         achievementCallbacks.forEach((callback) => {
           try {
@@ -316,6 +322,12 @@ function AchievementProvider({ children }) {
         }));
         
         achievementLogger.info('実績をFirestoreに保存しました', { キー: uniqueKey });
+        
+        // 実績登録完了イベントを発行
+        window.dispatchEvent(new CustomEvent('achievementDataChanged', {
+          detail: { achievement: newAchievement, type: 'save' }
+        }));
+        achievementLogger.info('実績データ変更イベントを発行しました', { type: 'save' });
         
         // コールバックを実行
         achievementCallbacks.forEach(callback => {
@@ -394,8 +406,10 @@ function AchievementProvider({ children }) {
         });
         
         // 実績データ変更イベントをディスパッチ - イベントを即座に発行
-        window.dispatchEvent(new CustomEvent('achievementDataChanged'));
-        achievementLogger.info('実績データ変更イベントを発行');
+        window.dispatchEvent(new CustomEvent('achievementDataChanged', {
+          detail: { type: 'delete', key: uniqueKey }
+        }));
+        achievementLogger.info('実績データ変更イベントを発行', { type: 'delete' });
         
         achievementLogger.info('実績をローカルストレージから削除しました', { キー: uniqueKey });
         return true;
@@ -426,8 +440,10 @@ function AchievementProvider({ children }) {
         });
         
         // 実績データ変更イベントをディスパッチ - イベントを即座に発行
-        window.dispatchEvent(new CustomEvent('achievementDataChanged'));
-        achievementLogger.info('実績データ変更イベントを発行');
+        window.dispatchEvent(new CustomEvent('achievementDataChanged', {
+          detail: { type: 'delete', key: uniqueKey }
+        }));
+        achievementLogger.info('実績データ変更イベントを発行', { type: 'delete' });
         
         achievementLogger.info('実績をFirestoreから削除しました', { キー: uniqueKey });
         return true;

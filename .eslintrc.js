@@ -25,7 +25,8 @@ module.exports = {
     'react-hooks/rules-of-hooks': 'error',
     'react-hooks/exhaustive-deps': 'warn',
     'no-unused-vars': 'warn',
-    'react/react-in-jsx-scope': 'off'
+    'react/react-in-jsx-scope': 'off',
+    'no-console': process.env.NODE_ENV === 'production' ? 'warn' : 'off'
   },
   settings: {
     react: {

@@ -49,6 +49,37 @@ export const PokemonAchievementProvider = ({ children }) => {
     
     return null;
   };
+
+  // 実績登録完了時のイベントリスナー
+  useEffect(() => {
+    const handleAchievementDataChanged = async (event) => {
+      console.log('ポケモン：実績データ変更イベント検出', event?.detail);
+      
+      // 追加された実績の情報
+      const achievementData = event?.detail?.achievement;
+      const changeType = event?.detail?.type;
+      
+      // 実績が保存された場合のみポケモン獲得チェックを行う
+      if (changeType === 'save') {
+        console.log('ポケモン獲得チェックを開始');
+        // 少し遅延させてStudyStateContextの更新が完了するのを待つ
+        setTimeout(() => {
+          const newlyAchievedPokemon = checkNewAchievementForPokemon();
+          if (newlyAchievedPokemon) {
+            console.log('新しいポケモンを獲得しました:', newlyAchievedPokemon);
+          }
+        }, 500);
+      }
+    };
+    
+    // イベントリスナーを追加
+    window.addEventListener('achievementDataChanged', handleAchievementDataChanged);
+    
+    // クリーンアップ関数
+    return () => {
+      window.removeEventListener('achievementDataChanged', handleAchievementDataChanged);
+    };
+  }, [totalStudyHours]);
   
   return (
     <PokemonAchievementContext.Provider

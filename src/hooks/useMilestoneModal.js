@@ -543,8 +543,11 @@ export function useMilestoneModal() {
   return { 
     milestone, 
     closeMilestoneModal,
-    checkMilestoneManually: checkManually, // 手動チェック関数を返す
-    clearShownMilestones, // 表示済みマイルストーンクリア関数
+    // 開発環境でのみ使用可能なデバッグ関数
+    ...(process.env.NODE_ENV !== 'production' ? {
+      checkMilestoneManually: checkManually, // 手動チェック関数を返す
+      clearShownMilestones, // 表示済みマイルストーンクリア関数
+    } : {}),
     showMilestoneDirectly, // 直接モーダルを表示する関数
     pokemonData // 共通のポケモンデータを返す
   };

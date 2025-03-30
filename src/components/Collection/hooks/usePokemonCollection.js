@@ -23,10 +23,9 @@ export const usePokemonCollection = () => {
   // 学習時間の取得と処理
   const [effectiveStudyHours, setEffectiveStudyHours] = useState(0);
   
-  // 学習時間の値をデバッグ出力
+  // 学習時間の変更を監視
   useEffect(() => {
-    console.log('PokemonCollection - totalStudyHours:', totalStudyHours);
-    console.log('PokemonCollection - allTimeData:', allTimeData);
+    // 学習時間の変更を監視するのみ
   }, [totalStudyHours, allTimeData]);
   
   // Firestoreの実績データを平坦化する関数
@@ -52,7 +51,7 @@ export const usePokemonCollection = () => {
       // 実績数のデバッグログを削除
       return flattenedAchievements;
     } catch (error) {
-      console.error('Firestore実績データの処理エラー:', error);
+      // エラー発生時は空オブジェクトを返す
       return {};
     }
   }, []);
@@ -81,7 +80,7 @@ export const usePokemonCollection = () => {
       // 小数点以下はそのまま維持
       return calculatedHours;
     } catch (error) {
-      console.error('学習時間計算エラー:', error);
+      // エラー発生時は0を返す
       return 0;
     }
   }, []);
@@ -123,11 +122,11 @@ export const usePokemonCollection = () => {
         
         return hours;
       } catch (firestoreError) {
-        console.error('Firestoreデータ取得エラー:', firestoreError);
+        // Firestoreデータ取得失敗時は利用可能な代替値を返す
         return allTimeData?.totalHours || totalStudyHours || 0;
       }
     } catch (error) {
-      console.error('学習時間計算エラー:', error);
+      // エラー発生時は利用可能な代替値を返す
       return allTimeData?.totalHours || totalStudyHours || 0;
     }
   }, [
@@ -210,7 +209,7 @@ export const usePokemonCollection = () => {
         
         setPokemonCollection(pokemonsWithStatus);
       } catch (err) {
-        console.error('ポケモンコレクション取得エラー:', err);
+        // エラー発生時はユーザーにエラーメッセージを表示
         setError('ポケモンデータの読み込みに失敗しました');
         
         // エラー時は学習時間に基づいてローカルデータを表示
@@ -243,7 +242,7 @@ export const usePokemonCollection = () => {
         });
       }
     } catch (err) {
-      console.error('コレクション保存エラー:', err);
+      // コレクション保存に失敗しても特別な処理はしない
     }
   };
   
@@ -259,7 +258,7 @@ export const usePokemonCollection = () => {
         effectiveHours = await calculateDirectStudyHours();
         // 再計算した学習時間ログを削除
       } catch (error) {
-        console.error('学習時間計算エラー:', error);
+        // エラー発生時は既存の値を使用
         effectiveHours = effectiveStudyHours; // フォールバック
       }
     }

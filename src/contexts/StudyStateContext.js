@@ -166,16 +166,36 @@ export const StudyStateProvider = ({ children }) => {
   
   // 実績データ変更イベントをリッスン
   useEffect(() => {
-    const handleAchievementDataChanged = async () => {
-      // 実績データの再取得は行わず、現在のデータから再計算する
+    const handleAchievementDataChanged = async (event) => {
+      console.log('実績データ変更イベント検出', event?.detail);
       
-      // 学習時間を計算
-      const total = calculateTotalStudyHours(
-        allSchedules,
-        allAchievements,
-        includeAchievementsInStats
-      );
-      setTotalStudyHours(total);
+      // 追加された実績の情報
+      const achievementData = event?.detail?.achievement;
+      const changeType = event?.detail?.type;
+      
+      // 累計データの再取得
+      try {
+        // 実績の保存または削除が行われた場合のみ再取得する
+        if (changeType === 'save' || changeType === 'delete') {
+          console.log('累計学習時間データの再取得を開始');
+          await fetchAllTimeData();
+        }
+        
+        // 直近の実績データを元に学習時間も再計算
+        const total = calculateTotalStudyHours(
+          allSchedules,
+          allAchievements,
+          includeAchievementsInStats
+        );
+        setTotalStudyHours(total);
+        
+        console.log('実績変更後の学習時間更新完了', {
+          totalStudyHours: total,
+          allTimeData: allTimeData
+        });
+      } catch (error) {
+        console.error('実績変更後の学習時間更新エラー:', error);
+      }
     };
     
     // イベントリスナーを追加
@@ -185,7 +205,7 @@ export const StudyStateProvider = ({ children }) => {
     return () => {
       window.removeEventListener('achievementDataChanged', handleAchievementDataChanged);
     };
-  }, [includeAchievementsInStats, allSchedules, allAchievements]);
+  }, [includeAchievementsInStats, allSchedules, allAchievements, fetchAllTimeData]);
   
   // 全てのデータがロードされたか確認
   useEffect(() => {

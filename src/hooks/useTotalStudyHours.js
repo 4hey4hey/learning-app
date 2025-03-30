@@ -10,10 +10,7 @@ import { useState, useCallback } from 'react';
  * @returns {number} 総学習時間（時間）
  */
 export const calculateTotalHours = (schedules = {}, achievements = {}, achievementsOnly = true) => {
-  console.log('独自実装の総学習時間計算開始:');
-  console.log('- スケジュール件数:', Object.keys(schedules).length);
-  console.log('- 実績データ件数:', Object.keys(achievements).length);
-  console.log('- 実績ベース表示:', achievementsOnly);
+  // 総学習時間計算処理の開始
   
   // 実績データの合計数をカウント
   let totalCompletedItems = 0;
@@ -50,7 +47,7 @@ export const calculateTotalHours = (schedules = {}, achievements = {}, achieveme
               }
             }
           } catch (error) {
-            console.error('学習時間計算中のエラー:', error);
+            // 学習時間計算中のエラー処理
           }
         }
       }
@@ -61,10 +58,7 @@ export const calculateTotalHours = (schedules = {}, achievements = {}, achieveme
   // 部分的に完了した項目は0.7時間として計算
   const totalHours = totalCompletedItems + (totalPartialItems * 0.7);
   
-  console.log('独自実装の総学習時間計算結果:');
-  console.log('- 完了時間:', totalCompletedItems);
-  console.log('- 部分完了時間:', totalPartialItems);
-  console.log('- 合計時間:', totalHours);
+  // 総学習時間の計算結果
   
   return Math.round(totalHours * 10) / 10;
 };

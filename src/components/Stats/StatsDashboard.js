@@ -158,10 +158,9 @@ const StatsDashboard = () => {
   
   const recordRate = calculateRecordRate();
   
-  // 学習時間のデバッグ出力
+  // 学習時間の変更を監視
   useEffect(() => {
-    console.log('StatsDashboard - totalStudyHours:', totalStudyHours);
-    console.log('StatsDashboard - allTimeData:', allTimeData);
+    // データの変更を監視するのみ
   }, [totalStudyHours, allTimeData]);
   
   return (

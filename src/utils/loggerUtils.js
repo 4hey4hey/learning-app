@@ -7,24 +7,24 @@
 // ロギング設定
 const LOG_CONFIG = {
   // 開発環境のみログを表示（本番環境ではログを抑制）
-  enabled: process.env.NODE_ENV === 'development',
+  enabled: process.env.NODE_ENV !== 'production',
   
-  // 各ログカテゴリの有効/無効切り替え
+  // 各ログカテゴリの有効/無効切り替え（本番環境では全て無効）
   categories: {
-    app: true,       // アプリケーション全般
-    auth: true,      // 認証関連
-    schedule: true,  // スケジュール関連
-    template: true,  // テンプレート関連
-    achievement: true, // 実績関連
-    sync: true,      // データ同期関連
-    date: true,      // 日付・時間処理関連
-    db: true,        // データベース操作関連
-    ui: true         // UIイベント関連
+    app: process.env.NODE_ENV !== 'production',       // アプリケーション全般
+    auth: process.env.NODE_ENV !== 'production',      // 認証関連
+    schedule: process.env.NODE_ENV !== 'production',  // スケジュール関連
+    template: process.env.NODE_ENV !== 'production',  // テンプレート関連
+    achievement: process.env.NODE_ENV !== 'production', // 実績関連
+    sync: process.env.NODE_ENV !== 'production',      // データ同期関連
+    date: process.env.NODE_ENV !== 'production',      // 日付・時間処理関連
+    db: process.env.NODE_ENV !== 'production',        // データベース操作関連
+    ui: process.env.NODE_ENV !== 'production'         // UIイベント関連
   },
   
   // 最小ログレベル（これより低いレベルのログは表示しない）
   // 0: debug, 1: info, 2: warn, 3: error
-  minLevel: process.env.NODE_ENV === 'production' ? 2 : 1, // 本番環境では警告以上、開発環境でもinfo以上のみ表示
+  minLevel: process.env.NODE_ENV === 'production' ? 3 : 1, // 本番環境ではエラーのみ、開発環境でもinfo以上のみ表示
   
   // ログスタイル設定
   styles: {

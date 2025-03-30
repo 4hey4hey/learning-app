@@ -28,13 +28,10 @@ const WeeklyCalendar = () => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [localAchievements, setLocalAchievements] = useState({});
 
-  // スケジュールの変更をログ出力
+  // スケジュールの変更を監視
   useEffect(() => {
-    console.log('スケジュール更新検出 -', new Date().toLocaleTimeString());
-    
     // 入力チェック
     if (!schedule) {
-      console.log('スケジュールがまだ読み込まれていません');
       return;
     }
     
@@ -42,12 +39,6 @@ const WeeklyCalendar = () => {
     const hasScheduleItems = Object.values(schedule).some(day => 
       day && Object.values(day).some(hour => hour !== null && hour.categoryId)
     );
-    
-    if (hasScheduleItems) {
-      console.log('有効なスケジュールアイテムがあります');
-    } else {
-      console.log('この週はまだスケジュールが登録されていません');
-    }
   }, [schedule]);
   
   // 実績の変更を監視

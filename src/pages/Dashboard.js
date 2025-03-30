@@ -14,7 +14,6 @@ import { useStudyState } from '../contexts/StudyStateContext';
 import { useDataDeletion } from '../hooks/useDataDeletion';
 import { useSchedule } from '../contexts/ScheduleContext';
 import { usePokemonAchievement } from '../contexts/PokemonAchievementContext';
-import { useMilestoneModal } from '../hooks/useMilestoneModal';
 import { format, addDays } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import '../utils/modal/finalModal';
@@ -25,7 +24,6 @@ const Dashboard = () => {
   const { selectedWeek } = useSchedule();
   const { clearWeekData } = useDataDeletion();
   const { newPokemon, closePokemonAchievementModal } = usePokemonAchievement();
-  const { milestone, closeMilestoneModal, checkMilestoneManually, clearShownMilestones } = useMilestoneModal();
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   
   // 週の範囲を表示するための関数
@@ -82,21 +80,7 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="lg:col-span-3">
           <div className="flex justify-between items-center mb-4">
-            <div className="flex space-x-2">
-              {/* デバッグボタン */}
-              <button 
-                onClick={checkMilestoneManually} 
-                className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded text-xs flex items-center"
-                title="マイルストーンをチェック">
-                <span className="mr-1">🔍</span> マイルストーン確認
-              </button>
-              <button 
-                onClick={clearShownMilestones} 
-                className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-xs flex items-center"
-                title="表示済みマイルストーンをリセット">
-                <span className="mr-1">🧹</span> マイルストーンリセット
-              </button>
-            </div>
+            <div className="flex-grow"></div> {/* 左側の空白スペース */}
             
             <button
               onClick={handleClearWeek}
@@ -153,13 +137,7 @@ const Dashboard = () => {
         />
       )}
       
-      {/* マイルストーンモーダル */}
-      {milestone && (
-        <MilestoneModal
-          milestone={milestone}
-          onClose={closeMilestoneModal}
-        />
-      )}
+      {/* マイルストーンモーダル - 別の実装でハンドリング */}
     </MainLayout>
   );
 };

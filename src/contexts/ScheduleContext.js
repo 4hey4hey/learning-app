@@ -42,7 +42,7 @@ export const ScheduleProvider = ({ children }) => {
         }
       }
     } catch (error) {
-      console.warn('保存された週の読み込みエラー:', error);
+      // 保存された週の読み込みエラーをシリアスとして処理
     }
     
     // デフォルトは現在の週
@@ -64,7 +64,7 @@ export const ScheduleProvider = ({ children }) => {
     try {
       localStorage.setItem('selectedWeek', normalizedWeek.toISOString());
     } catch (error) {
-      console.warn('週の保存エラー:', error);
+      // 週の保存エラーをシリアスとして処理
     }
   }, []);
 
@@ -74,11 +74,7 @@ export const ScheduleProvider = ({ children }) => {
     const normalizedStartDate = getWeekStartDate(targetWeek);
     const weekKey = getWeekIdentifier(normalizedStartDate);
     
-    console.log('スケジュール取得開始:', {
-      対象週: targetWeek,
-      正規化開始日: normalizedStartDate,
-      週キー: weekKey
-    });
+    // スケジュール取得開始
     
     setLoading(true);
     setError(null);
@@ -92,11 +88,7 @@ export const ScheduleProvider = ({ children }) => {
         if (storedData) {
           try {
             const parsedSchedule = JSON.parse(storedData);
-            console.log('ローカルストレージからスケジュールを読み込みました:', {
-              週キー: weekKey,
-              スケジュールキー数: Object.keys(parsedSchedule).length,
-              day1例: parsedSchedule.day1 ? Object.keys(parsedSchedule.day1).filter(k => parsedSchedule.day1[k]).length + '個のアイテム' : 'なし'
-            });
+            // ローカルストレージからスケジュール読み込み完了
             
             // 日付データの正規化
             const processedSchedule = {};
@@ -143,7 +135,7 @@ export const ScheduleProvider = ({ children }) => {
                         throw new Error('無効な日付');
                       }
                     } catch (dateError) {
-                      console.warn('日付変換エラー:', dateError, item);
+                      // 日付変換エラーを処理
                       // エラー時は当日の日付を計算
                       itemDate = new Date(normalizedStartDate);
                       itemDate.setDate(normalizedStartDate.getDate() + (i - 1));
@@ -172,7 +164,7 @@ export const ScheduleProvider = ({ children }) => {
               if (processedSchedule[dayKey] && processedSchedule[dayKey].hour9) {
                 const item = processedSchedule[dayKey].hour9;
                 if (item) {
-                  console.log(`${dayKey}-hour9 の日付:`, item.date);
+                  // 日付デバッグ情報
                 }
               }
             }
@@ -180,7 +172,7 @@ export const ScheduleProvider = ({ children }) => {
             setSchedule(processedSchedule);
             return processedSchedule;
           } catch (parseError) {
-            console.error('スケジュールのパースエラー:', parseError);
+            // スケジュールのパースエラー処理
           }
         }
         
@@ -215,7 +207,7 @@ export const ScheduleProvider = ({ children }) => {
           if (validatedSchedule[dayKey] && validatedSchedule[dayKey].hour9) {
             const item = validatedSchedule[dayKey].hour9;
             if (item) {
-              console.log(`Firestore ${dayKey}-hour9 の日付:`, item.date);
+              // Firestoreの日付情報
             }
           }
         }
@@ -229,7 +221,7 @@ export const ScheduleProvider = ({ children }) => {
       setSchedule(emptySchedule);
       return emptySchedule;
     } catch (error) {
-      console.error('スケジュール取得エラー:', error);
+      // スケジュール取得エラー処理
       setError('スケジュールの取得中にエラーが発生しました。');
       
       // エラー時は空のスケジュールを返す
@@ -247,10 +239,7 @@ export const ScheduleProvider = ({ children }) => {
     
     const validatedSchedule = { ...scheduleData };
     
-    console.log('スケジュールバリデーション開始', {
-      weekStart,
-      日数: Object.keys(scheduleData).length
-    });
+    // スケジュールバリデーション開始
     
     // 各日と時間枠をチェック
     for (let i = 1; i <= 7; i++) {
@@ -294,19 +283,19 @@ export const ScheduleProvider = ({ children }) => {
               
               // 日付が有効か確認
               if (isNaN(validDate.getTime())) {
-                console.warn('無効な日付が見つかりました。曜日から日付を生成します:', { dayKey, hourKey, date: item.date });
+                // 無効な日付が見つかった場合の処理
                 validDate = dayDate; // 無効な場合は当日の日付を使用
               }
             } else {
               // 日付が存在しない場合は曜日から計算した日付を使用
-              console.warn('日付が設定されていません。曜日から日付を生成します:', { dayKey, hourKey });
+              // 日付が設定されていない場合の処理
               validDate = dayDate;
             }
             
             // 時間部分を確実にリセット
             validDate.setHours(0, 0, 0, 0);
           } catch (error) {
-            console.error('日付検証中のエラー:', error, { dayKey, hourKey });
+            // 日付検証中のエラー処理
             validDate = dayDate; // エラー時は当日の日付を使用
           }
           
@@ -322,7 +311,7 @@ export const ScheduleProvider = ({ children }) => {
           
           // デバッグ用
           if (dayKey === 'day1' && hourKey === 'hour9') {
-            console.log('検証後のday1-hour9の日付:', validDate);
+            // 検証後の日付情報
           }
         } else {
           // 時間枠がない場合はnullを設定
@@ -389,7 +378,7 @@ export const ScheduleProvider = ({ children }) => {
       
       return null;
     } catch (error) {
-      console.error('スケジュールアイテム追加エラー:', error);
+      // スケジュールアイテム追加エラー処理
       setError('スケジュールアイテムの追加中にエラーが発生しました。');
       return null;
     } finally {
@@ -437,7 +426,7 @@ export const ScheduleProvider = ({ children }) => {
       
       return false;
     } catch (error) {
-      console.error('スケジュールアイテム削除エラー:', error);
+      // スケジュールアイテム削除エラー処理
       setError('スケジュールアイテムの削除中にエラーが発生しました。');
       return false;
     } finally {
