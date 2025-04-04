@@ -233,7 +233,9 @@ const WeeklyCalendar = () => {
                       {scheduleItem ? (
                         <div
                           className="h-full flex flex-col justify-between cursor-pointer p-1 rounded text-white schedule-item"
-                          style={{ backgroundColor: getCategoryColor(scheduleItem.categoryId) }}
+                          style={{ 
+                            backgroundColor: achievementIcon.icon === '✗' ? '#CCCCCC' : getCategoryColor(scheduleItem.categoryId)
+                          }}
                         >
                           <div className="text-sm font-medium truncate">
                             {getCategoryName(scheduleItem.categoryId)}

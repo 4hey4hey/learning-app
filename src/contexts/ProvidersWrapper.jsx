@@ -14,6 +14,7 @@ import { TemplateProvider } from './TemplateContext';
 import { StudyStateProvider } from './StudyStateContext';
 import { DateRangeProvider } from './DateRangeContext';
 import { PokemonAchievementProvider } from './PokemonAchievementContext';
+import { GoalsProvider } from './GoalsContext';
 
 // 依存関係の順序を考慮したプロバイダーの配置
 // AuthProvider: 認証状態を管理（最も上位）
@@ -38,9 +39,11 @@ const ProvidersWrapper = ({ children }) => {
                   <TemplateProvider>
                     <DateRangeProvider>
                       <StudyStateProvider>
-                        <PokemonAchievementProvider>
-                          {children}
-                        </PokemonAchievementProvider>
+                        <GoalsProvider>
+                          <PokemonAchievementProvider>
+                            {children}
+                          </PokemonAchievementProvider>
+                        </GoalsProvider>
                       </StudyStateProvider>
                     </DateRangeProvider>
                   </TemplateProvider>

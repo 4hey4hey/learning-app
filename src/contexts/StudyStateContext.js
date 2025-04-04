@@ -136,7 +136,7 @@ export const StudyStateProvider = ({ children }) => {
       });
       
     } catch (error) {
-      console.error('全期間データ取得エラー:', error);
+      // エラーハンドリング
       setAllTimeError('データの取得中にエラーが発生しました。');
     } finally {
       setAllTimeLoading(false);
@@ -167,7 +167,7 @@ export const StudyStateProvider = ({ children }) => {
   // 実績データ変更イベントをリッスン
   useEffect(() => {
     const handleAchievementDataChanged = async (event) => {
-      console.log('実績データ変更イベント検出', event?.detail);
+      // 実績データ変更イベントの処理
       
       // 追加された実績の情報
       const achievementData = event?.detail?.achievement;
@@ -175,9 +175,8 @@ export const StudyStateProvider = ({ children }) => {
       
       // 累計データの再取得
       try {
-        // 実績の保存または削除が行われた場合のみ再取得する
+        // 実績データが変更された場合は再取得
         if (changeType === 'save' || changeType === 'delete') {
-          console.log('累計学習時間データの再取得を開始');
           await fetchAllTimeData();
         }
         
@@ -189,12 +188,9 @@ export const StudyStateProvider = ({ children }) => {
         );
         setTotalStudyHours(total);
         
-        console.log('実績変更後の学習時間更新完了', {
-          totalStudyHours: total,
-          allTimeData: allTimeData
-        });
+        // 学習時間の更新完了
       } catch (error) {
-        console.error('実績変更後の学習時間更新エラー:', error);
+        // エラー処理
       }
     };
     
@@ -224,7 +220,7 @@ export const StudyStateProvider = ({ children }) => {
       const achievements = await getAllDocuments('achievements');
       return achievements || {};
     } catch (err) {
-      console.error('実績データ再取得エラー:', err);
+      // 実績データ取得エラー時の処理
       return {};
     }
   }, [getAllDocuments]);
@@ -241,7 +237,7 @@ export const StudyStateProvider = ({ children }) => {
         const achievements = await getAllDocuments('achievements');
         setAllAchievements(achievements || {});
       } catch (err) {
-        console.error('データ取得エラー:', err);
+        // データ取得エラー処理
       }
     };
     
@@ -253,64 +249,49 @@ export const StudyStateProvider = ({ children }) => {
   
   // 全期間の学習時間を計算
   useEffect(() => {
-    // 学習時間計算処理
-    const processStudyHours = () => {
-      if (Object.keys(allSchedules).length > 0) {
-        // 通常の計算を実行
-        const total = calculateTotalStudyHours(
-          allSchedules,
-          allAchievements,
-          includeAchievementsInStats
-        );
-        setTotalStudyHours(total);
-      }
-    };
+    // 学習時間を計算
+    if (Object.keys(allSchedules).length > 0) {
+      const total = calculateTotalStudyHours(
+        allSchedules,
+        allAchievements,
+        includeAchievementsInStats
+      );
+      setTotalStudyHours(total);
+    }
 
-    // 通常の計算処理を実行
-    processStudyHours();
-
-    // 必要な場合のみ実績データを再取得
-    const refreshAchievementDataIfNeeded = async () => {
-      // 初回レンダリング時はスキップ
+    // 実績データが必要な場合のみ再取得
+    const loadAchievementsIfNeeded = async () => {
+      // 初回レンダリング時はフラグをリセットして終了
       if (isFirstRender.current) {
         isFirstRender.current = false;
         return;
       }
       
-      // 既に再取得中ならスキップ
-      if (isRefreshing.current) {
+      // 既に取得中またはデータが必要ない場合は処理をスキップ
+      if (isRefreshing.current || 
+          !includeAchievementsInStats || 
+          Object.keys(allAchievements).length > 0 || 
+          Object.keys(allSchedules).length === 0) {
         return;
       }
-
-      // 実績データが必要で、不足している場合のみ再取得
-      if (includeAchievementsInStats && 
-          Object.keys(allAchievements).length === 0 && 
-          Object.keys(allSchedules).length > 0) {
-        
-        isRefreshing.current = true; // 再取得中フラグをセット
-
-        try {
-          const achievements = await refreshAchievementData();
-          
-          if (achievements && Object.keys(achievements).length > 0) {
-            // 実績データをそのまま設定する（変換せずに）
-            setAllAchievements(achievements);
-            
-            // 再計算が必要になるため、次のレンダリングサイクルでtotalStudyHoursが更新される
-          }
-        } catch (error) {
-          console.error('実績データ再取得エラー:', error);
-        } finally {
-          // 処理完了後にフラグをリセット
-          setTimeout(() => {
-            isRefreshing.current = false;
-          }, 1000); // 少し遅延させて確実にフラグをリセット
+      
+      // 実績データ取得処理
+      isRefreshing.current = true;
+      
+      try {
+        const achievements = await refreshAchievementData();
+        if (achievements && Object.keys(achievements).length > 0) {
+          setAllAchievements(achievements);
         }
+      } catch (error) {
+        // エラー処理
+      } finally {
+        isRefreshing.current = false;
       }
     };
 
-    // 実績データ再取得を非同期で実行 (メインの計算処理と分離)
-    refreshAchievementDataIfNeeded();
+    // 実績データの取得処理を実行
+    loadAchievementsIfNeeded();
 
   }, [allSchedules, allAchievements, includeAchievementsInStats, refreshAchievementData]);
   
@@ -351,9 +332,6 @@ export const StudyStateProvider = ({ children }) => {
   }, [setIncludeAchievementsInStats]);
 
   // 統計設定の切り替え（実績ベースの統計表示）
-  // includeAchievementsInStatsの値を切り替える
-  // false: すべての予定を集計に含める（デフォルト）
-  // true: 実績のある項目のみを集計に含める
   const toggleAchievementsInStats = useCallback((value) => {
     const newValue = typeof value === 'boolean' ? value : !includeAchievementsInStats;
     setIncludeAchievementsInStats(newValue);
@@ -411,6 +389,7 @@ export const StudyStateProvider = ({ children }) => {
     fetchAllTimeData
   ]);
 
+  // 依存配列の長さが原因でメモ化されない可能性がある点に注意
   return (
     <StudyStateContext.Provider value={value}>
       {children}

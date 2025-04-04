@@ -1,5 +1,5 @@
 // src/utils/timeUtils.js
-import { format, startOfWeek, addDays, isValid, parse } from 'date-fns';
+import { format, startOfWeek, addDays } from 'date-fns';
 import { dateLogger } from './loggerUtils';
 
 // オブジェクトとして関数をエクスポート
@@ -129,13 +129,13 @@ const TimeUtils = {
             
             if (shouldInclude) {
               if (achievement && achievement.status === 'partial') {
-                categoryHoursMap[scheduleItem.categoryId] += 42; // 60 * 0.7 = 42 分
+                categoryHoursMap[scheduleItem.categoryId] += 42; // 部分的に完了の場合は0.7時間 (42分)
               } else {
                 categoryHoursMap[scheduleItem.categoryId] += 60; // 完了または実績なしの場合は60分
               }
             }
           } catch (error) {
-            dateLogger.error('時間計算中にエラーが発生しました:', error, '項目:', scheduleItem);
+            dateLogger.error('時間計算エラー:', error, '項目:', scheduleItem);
           }
         }
       }
@@ -170,13 +170,13 @@ const TimeUtils = {
                                
             if (shouldCount) {
               if (achievement && achievement.status === 'partial') {
-                totalMinutes += 42; // 60 * 0.7 = 42 分
+                totalMinutes += 42; // 部分的に完了の場合は0.7時間 (42分)
               } else {
                 totalMinutes += 60; // 完了または実績なしの場合は60分
               }
             }
           } catch (error) {
-            dateLogger.error('時間計算中のエラー:', error, '項目:', scheduleItem);
+            dateLogger.error('時間計算エラー:', error, '項目:', scheduleItem);
           }
         }
       }
@@ -265,7 +265,7 @@ const TimeUtils = {
         }
       }
     } catch (error) {
-      dateLogger.error('月間学習時間計算中にエラーが発生しました:', error);
+      dateLogger.error('月間学習時間計算エラー:', error);
     }
     
     return totalMonthHours;
@@ -336,8 +336,10 @@ export const {
   calculateWeekStudyHours,
   calculateTotalStudyHours,
   calculateMonthStudyHours,
-  debugAchievementStructure
 } = TimeUtils;
+
+// デバッグ用関数を必要に応じて個別にエクスポート
+// export const { debugAchievementStructure } = TimeUtils;
 
 // デフォルトエクスポート
 export default TimeUtils;

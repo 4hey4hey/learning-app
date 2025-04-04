@@ -34,6 +34,10 @@ service cloud.firestore {
         allow read, write: if isUserAuthenticated(userId);
       }
       
+      match /weeklyGoals/{weekId} {
+        allow read, write: if isUserAuthenticated(userId);
+      }
+      
       // ユーザードキュメント自体へのアクセス
       allow read, write: if isUserAuthenticated(userId);
     }

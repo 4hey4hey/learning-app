@@ -13,8 +13,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useFirestore } from '../hooks/useFirestore';
 import { 
   getWeekStartDate, 
-  getWeekIdentifier,
-  generateScheduleKey
+  getWeekIdentifier
 } from '../utils/timeUtils';
 import { 
   ACHIEVEMENT_STATUS, 
@@ -71,11 +70,9 @@ function AchievementProvider({ children }) {
       if (savedSetting !== null) {
         const parsedValue = JSON.parse(savedSetting);
         setIncludeAchievementsInStats(parsedValue);
-        achievementLogger.info('実績設定を読み込みました', { includeAchievementsInStats: parsedValue });
       } else {
         // 保存されていない場合はデフォルト値(true)を保存
         localStorage.setItem('includeAchievementsInStats', JSON.stringify(true));
-        achievementLogger.info('実績設定のデフォルト値(true)を保存しました');
       }
     } catch (error) {
       achievementLogger.error('設定の読み込みエラー:', error);
@@ -86,7 +83,6 @@ function AchievementProvider({ children }) {
   useEffect(() => {
     try {
       localStorage.setItem('includeAchievementsInStats', JSON.stringify(includeAchievementsInStats));
-      achievementLogger.debug('実績設定を保存しました', { includeAchievementsInStats });
     } catch (error) {
       achievementLogger.error('設定の保存エラー:', error);
     }
@@ -97,12 +93,6 @@ function AchievementProvider({ children }) {
     if (schedule && achievements) {
       const stats = calculateAchievementStats(schedule, achievements, ACHIEVEMENT_STATUS);
       setAchievementStats(stats);
-      
-      achievementLogger.debug('実績統計を更新しました', { 
-        recordRate: stats.recordRate,
-        completionRate: stats.completionRate,
-        totalItems: stats.stats.totalPlanned
-      });
     }
   }, [schedule, achievements]);
 
@@ -115,7 +105,6 @@ function AchievementProvider({ children }) {
     setLoading(true);
     setError(null);
     
-    achievementLogger.info('実績データ取得開始', { 週: weekKey });
     
     try {
       // デモモードの場合はローカルストレージから取得
@@ -127,9 +116,6 @@ function AchievementProvider({ children }) {
           try {
             const parsedAchievements = JSON.parse(storedData);
             setAchievements(parsedAchievements);
-            achievementLogger.info('ローカルストレージから実績データを取得しました', {
-              実績数: Object.keys(parsedAchievements).length
-            });
             return parsedAchievements;
           } catch (parseError) {
             achievementLogger.error('実績データのパースエラー:', parseError);
@@ -147,7 +133,6 @@ function AchievementProvider({ children }) {
         
         if (!achievementsData) {
           setAchievements({});
-          achievementLogger.info('実績データはありません', { 週: weekKey });
           return {};
         }
         
@@ -172,9 +157,6 @@ function AchievementProvider({ children }) {
         });
         
         setAchievements(processedAchievements);
-        achievementLogger.info('Firestoreから実績データを取得しました', {
-          実績数: Object.keys(processedAchievements).length
-        });
         return processedAchievements;
       }
       
@@ -239,8 +221,6 @@ function AchievementProvider({ children }) {
     setLoading(true);
     setError(null);
     
-    achievementLogger.info('実績保存開始', { キー: uniqueKey, 状態: status });
-    
     try {
       // キーから日付情報を抽出
       const [dateStr, dayKey, hourKey] = uniqueKey.split('_');
@@ -284,13 +264,12 @@ function AchievementProvider({ children }) {
           [uniqueKey]: newAchievement
         }));
         
-        achievementLogger.info('実績をローカルストレージに保存しました', { キー: uniqueKey });
+        // 実績をローカルストレージに保存
         
         // 実績登録完了イベントを発行
         window.dispatchEvent(new CustomEvent('achievementDataChanged', {
           detail: { achievement: newAchievement, type: 'save' }
         }));
-        achievementLogger.info('実績データ変更イベントを発行しました', { type: 'save' });
         
         // コールバックを実行
         achievementCallbacks.forEach((callback) => {
@@ -321,13 +300,12 @@ function AchievementProvider({ children }) {
           [uniqueKey]: newAchievement
         }));
         
-        achievementLogger.info('実績をFirestoreに保存しました', { キー: uniqueKey });
+        // 実績をFirestoreに保存
         
         // 実績登録完了イベントを発行
         window.dispatchEvent(new CustomEvent('achievementDataChanged', {
           detail: { achievement: newAchievement, type: 'save' }
         }));
-        achievementLogger.info('実績データ変更イベントを発行しました', { type: 'save' });
         
         // コールバックを実行
         achievementCallbacks.forEach(callback => {
@@ -361,8 +339,6 @@ function AchievementProvider({ children }) {
     setLoading(true);
     setError(null);
     
-    achievementLogger.info('実績削除開始', { キー: uniqueKey });
-    
     try {
       // キーから日付情報を抽出
       const [dateStr, dayKey, hourKey] = uniqueKey.split('_');
@@ -388,7 +364,6 @@ function AchievementProvider({ children }) {
         
         // 指定されたキーのデータが存在するか確認
         if (!currentAchievements[uniqueKey]) {
-          achievementLogger.warn('削除する実績が見つかりません', { キー: uniqueKey });
           return true;
         }
         
@@ -405,13 +380,12 @@ function AchievementProvider({ children }) {
           return newAchievements;
         });
         
-        // 実績データ変更イベントをディスパッチ - イベントを即座に発行
+        // 実績データ変更イベントをディスパッチ
         window.dispatchEvent(new CustomEvent('achievementDataChanged', {
           detail: { type: 'delete', key: uniqueKey }
         }));
-        achievementLogger.info('実績データ変更イベントを発行', { type: 'delete' });
         
-        achievementLogger.info('実績をローカルストレージから削除しました', { キー: uniqueKey });
+        // 実績をローカルストレージから削除
         return true;
       }
       
@@ -422,7 +396,6 @@ function AchievementProvider({ children }) {
         
         // 指定されたキーのデータが存在するか確認
         if (!currentAchievements[uniqueKey]) {
-          achievementLogger.warn('削除する実績が見つかりません', { キー: uniqueKey });
           return true;
         }
         
@@ -439,13 +412,12 @@ function AchievementProvider({ children }) {
           return newAchievements;
         });
         
-        // 実績データ変更イベントをディスパッチ - イベントを即座に発行
+        // 実績データ変更イベントをディスパッチ
         window.dispatchEvent(new CustomEvent('achievementDataChanged', {
           detail: { type: 'delete', key: uniqueKey }
         }));
-        achievementLogger.info('実績データ変更イベントを発行', { type: 'delete' });
         
-        achievementLogger.info('実績をFirestoreから削除しました', { キー: uniqueKey });
+        // 実績をFirestoreから削除
         return true;
       }
       
@@ -462,7 +434,6 @@ function AchievementProvider({ children }) {
   // 実績データをリセットする関数
   const resetAchievements = useCallback(() => {
     setAchievements({});
-    achievementLogger.info('実績データをリセットしました');
   }, []);
   
   // コールバック登録関数
@@ -472,8 +443,6 @@ function AchievementProvider({ children }) {
       return () => {};
     }
     
-    achievementLogger.debug('実績コールバックを登録しました');
-    
     // コールバック関数を保存
     setAchievementCallbacks(prev => {
       const newCallbacks = [...prev, callback];
@@ -482,8 +451,6 @@ function AchievementProvider({ children }) {
     
     // クリーンアップ関数を返す
     return () => {
-      achievementLogger.debug('実績コールバックを解除しました');
-      
       // コールバックを削除
       setAchievementCallbacks(prev => {
         const filtered = prev.filter(cb => cb !== callback);

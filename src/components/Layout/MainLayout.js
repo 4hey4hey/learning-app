@@ -33,7 +33,7 @@ const MainLayout = ({ children }) => {
           <div className="flex flex-col sm:flex-row justify-between sm:h-16">
             <div className="flex items-center justify-between py-3 sm:py-0">
               <Link to="/dashboard" className="flex-shrink-0 flex items-center">
-                <span className="text-lg sm:text-xl font-bold text-gray-800">勉強計画アプリ</span>
+                <img src="/logo.png" alt="Studyplan" className="h-14 sm:h-16" />
               </Link>
               
               <div className="flex sm:hidden items-center space-x-2">

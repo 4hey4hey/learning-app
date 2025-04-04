@@ -295,6 +295,11 @@ export function useMilestoneModal() {
       // 実績から直接計算した値を優先し、それがない場合は他ソースから取得
       const effectiveHours = manualCalculatedHours > 0 ? manualCalculatedHours : (allTimeData?.totalHours || totalStudyHours);
 
+      console.log('マイルストーンチェック中', {
+        累計学習時間: effectiveHours,
+        表示済み: currentShownMilestones
+      });
+
       // 学習時間に応じて適切なポケモンを選択
       const eligiblePokemons = POKEMON_DATA.filter(
         pokemon => effectiveHours >= pokemon.condition.value
@@ -303,37 +308,46 @@ export function useMilestoneModal() {
       if (eligiblePokemons.length > 0) {
         // 条件を満たす最高レベルのポケモンを選択
         const highestPokemon = eligiblePokemons[0];
+        console.log('条件を満たすポケモン', {
+          id: highestPokemon.id,
+          name: highestPokemon.name,
+          必要時間: highestPokemon.condition.value,
+          表示済みか: currentShownMilestones.includes(highestPokemon.id)
+        });
+        
+        // 新しいマイルストーンかどうか
+        const isNewMilestone = !currentShownMilestones.includes(highestPokemon.id);
+        console.log('新しいマイルストーンか？', isNewMilestone);
         
         // 手動チェックの場合は、表示済みかどうかだけで判断
-        if (!currentShownMilestones.includes(highestPokemon.id)) {
-          setMilestone(highestPokemon);
-          
-          // 直接モーダルを表示 (React レンダリングのバックアップとして)
-          setTimeout(() => {
-            // 最終モーダルを使用し、ポケモンデータを渡す
-            if (window.showFinalModal) {
-              window.showFinalModal(highestPokemon);
-            } else {
-              // フォールバックとして元のメソッドを使用
-              showMilestoneModal(highestPokemon);
-            }
-          }, 100);
-          
-          // 表示済みマイルストーンを保存
+        if (isNewMilestone) {
+          // 表示済みマイルストーンを先に保存
           const updatedShownMilestones = [...currentShownMilestones, highestPokemon.id];
           await saveShownMilestones(updatedShownMilestones);
+
+          // 最後にモーダル表示用の状態を設定
+          setMilestone(highestPokemon);
+          console.log('マイルストーンを設定しました', highestPokemon.name);
+          
+          return highestPokemon;
+        } else if (process.env.NODE_ENV !== 'production') {
+          // 開発環境では表示済みの場合も表示
+          // デバッグ用に状態を設定
+          setMilestone(highestPokemon);
+          console.log('開発環境用：表示済みですがマイルストーン設定', highestPokemon.name);
           
           return highestPokemon;
         } else {
-          // 以前に表示済みの場合
-          setMilestone(highestPokemon);
-          
-          return highestPokemon;
+          // 本番環境で表示済みの場合は何も表示しない
+          console.log('表示済みのためスキップ', highestPokemon.name);
+          return null;
         }
       }
       
+      console.log('表示可能なマイルストーンはありません');
       return null;
     } catch (error) {
+      console.error('マイルストーンチェックエラー', error);
       return null;
     }
   }, [allTimeData, totalStudyHours, checkNewPokemonAchievement, fetchShownMilestones, saveShownMilestones, calculateDirectStudyHours]); // pokemonDataをPOKEMON_DATAに変更したため依存配列から削除
@@ -406,20 +420,12 @@ export function useMilestoneModal() {
         
         // 条件を達成していてまだ表示されていないなら表示
         if (isNewMilestone) {
+          // モーダル状態を設定するだけで、直接モーダルは表示しない
           setMilestone(highestPokemon);
-  
+          
           // 表示済みマイルストーンを保存
           const updatedShownMilestones = [...currentShownMilestones, highestPokemon.id];
           await saveShownMilestones(updatedShownMilestones);
-          
-          // モーダル表示
-          setTimeout(() => {
-            if (window.showFinalModal) {
-              window.showFinalModal(highestPokemon);
-            } else {
-              showMilestoneModal(highestPokemon);
-            }
-          }, 100);
         }
       }
     } catch (error) {

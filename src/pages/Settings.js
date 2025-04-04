@@ -6,6 +6,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useSyncContext } from '../contexts/SyncContext';
 import { DataMigration } from '../utils/migrationUtils';
 import { useDataDeletion } from '../hooks/useDataDeletion';
+import { useMilestoneModal } from '../hooks/useMilestoneModal';
 import { useToast } from '../contexts/ToastContext';
 
 const Settings = () => {
@@ -22,6 +23,7 @@ const Settings = () => {
   // 正しい関数名を使用
   const { showSuccess, showError } = useToast();
   const { deleteScheduleData } = useDataDeletion();
+  const { clearShownMilestones } = useMilestoneModal();
   
   const [isResetting, setIsResetting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -311,6 +313,28 @@ const Settings = () => {
             </button>
           </div>
         )}
+
+        {/* マイルストーンクリアセクション */}
+        <div className="bg-white shadow rounded-lg p-6 mb-6">
+          <h2 className="text-xl font-semibold mb-4 text-purple-600">マイルストーンリセット</h2>
+          <div className="bg-purple-50 border-l-4 border-purple-400 p-4 mb-4">
+            <p className="text-purple-700">
+              <strong>注意:</strong> この操作を行うと、表示済みのマイルストーンがリセットされ、再度ポップアップ表示されるようになります。
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              if (window.confirm('表示済みのマイルストーンをリセットしてもよろしいですか？'))
+                if (clearShownMilestones())
+                  showSuccess('マイルストーンをリセットしました。ダッシュボードに戻ると再表示されます。');
+                else
+                  showError('マイルストーンのリセットに失敗しました。');
+            }}
+            className="w-full py-2 rounded bg-purple-500 hover:bg-purple-600 text-white"
+          >
+            マイルストーンをリセット
+          </button>
+        </div>
 
         {/* 予定データ削除セクション */}
         {!demoMode && currentUser && (

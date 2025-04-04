@@ -2,8 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../hooks/useAuth';
 import { useFirestore } from '../../../hooks/useFirestore';
 import { useStudyState } from '../../../contexts/StudyStateContext';
-// 循環参照を防ぐためにuseAchievementを一時的にコメントアウト
-// import { useAchievement } from '../../../contexts/AchievementContext';
 import { POKEMON_DATA } from '../../../constants/pokemonData';
 
 
@@ -12,8 +10,7 @@ export const usePokemonCollection = () => {
   const { currentUser, demoMode } = useAuth();
   const { getAllDocuments, setDocument } = useFirestore();
   const { totalStudyHours, allTimeData } = useStudyState();
-  // const { achievements: contextAchievements } = useAchievement();
-  // 循環参照回避のための仮の実装
+  // 実績データは使用しない
   const contextAchievements = {};
   
   const [pokemonCollection, setPokemonCollection] = useState([]);
@@ -22,11 +19,6 @@ export const usePokemonCollection = () => {
   
   // 学習時間の取得と処理
   const [effectiveStudyHours, setEffectiveStudyHours] = useState(0);
-  
-  // 学習時間の変更を監視
-  useEffect(() => {
-    // 学習時間の変更を監視するのみ
-  }, [totalStudyHours, allTimeData]);
   
   // Firestoreの実績データを平坦化する関数
   const processFirestoreAchievements = useCallback((achievementsData) => {
@@ -48,7 +40,6 @@ export const usePokemonCollection = () => {
         }
       });
       
-      // 実績数のデバッグログを削除
       return flattenedAchievements;
     } catch (error) {
       // エラー発生時は空オブジェクトを返す
@@ -88,7 +79,6 @@ export const usePokemonCollection = () => {
   // 全期間の学習時間を計算する関数
   const calculateDirectStudyHours = useCallback(async () => {
     try {
-      // 全期間の学習時間計算開始ログを削除
       
       // allTimeDataがあればそれを優先して使用
       if (allTimeData && allTimeData.totalHours) {
@@ -98,27 +88,22 @@ export const usePokemonCollection = () => {
       // 非認証ユーザーまたはデモモードの場合は既存の値を使用
       if (!currentUser || demoMode) {
         const value = totalStudyHours || 0;
-        // 非認証/デモモードの値ログを削除
         return value;
       }
       
       try {
         // Firestoreから全期間のデータを取得
-        // Firestoreからの実績データ取得ログを削除
         const firestoreAchievements = await getAllDocuments('achievements');
         
         if (!firestoreAchievements || Object.keys(firestoreAchievements).length === 0) {
-          // Firestoreから実績データが取得できなかった場合のログを削除
           return allTimeData?.totalHours || totalStudyHours || 0;
         }
         
         // 実績データを平坦化
         const flattenedAchievements = processFirestoreAchievements(firestoreAchievements);
-        // 平坦化後の実績数ログを削除
         
         // 実績から学習時間を計算
         const hours = calculateStudyHoursFromAchievements(flattenedAchievements);
-        // 全期間の学習時間計算結果ログを削除
         
         return hours;
       } catch (firestoreError) {
@@ -151,7 +136,6 @@ export const usePokemonCollection = () => {
         
         // 全期間の学習時間を計算
         const calculatedHours = await calculateDirectStudyHours();
-        // 計算された学習時間ログを削除
         
         // 結果を設定
         setEffectiveStudyHours(calculatedHours);
@@ -203,7 +187,6 @@ export const usePokemonCollection = () => {
           .map(pokemon => pokemon.id);
           
         if (JSON.stringify(newCollectedIds) !== JSON.stringify(collectedPokemonIds) && currentUser) {
-          // 新しいポケモン保存ログを削除
           saveCollectionToDatabase(pokemonsWithStatus);
         }
         
@@ -248,7 +231,6 @@ export const usePokemonCollection = () => {
   
   // 新しいポケモン獲得判定（実績入力後に使用）
   const checkNewPokemonAchievement = async (hours = null) => {
-    // ポケモン収集判定関数呼び出しログを削除
     
     // 時間が指定されていない場合は再計算
     let effectiveHours = hours;
@@ -256,14 +238,11 @@ export const usePokemonCollection = () => {
       try {
         // 全期間の学習時間を計算
         effectiveHours = await calculateDirectStudyHours();
-        // 再計算した学習時間ログを削除
       } catch (error) {
         // エラー発生時は既存の値を使用
         effectiveHours = effectiveStudyHours; // フォールバック
       }
     }
-    
-    // マイルストーンチェック時間ログを削除
     
     // 条件を満たすポケモンを探す
     const eligiblePokemons = POKEMON_DATA.filter(pokemon => 
@@ -271,18 +250,13 @@ export const usePokemonCollection = () => {
       pokemon.condition.value <= effectiveHours
     ).sort((a, b) => a.condition.value - b.condition.value);
     
-    // 条件を満たすポケモン一覧ログを削除
-    
     // 未獲得のポケモンを取得
     const unachievedPokemons = pokemonCollection.filter(pokemon => !pokemon.collected);
-    // 未獲得ポケモン数ログを削除
     
     // 時間条件でソート（少ない順）
     const sortedPokemons = unachievedPokemons.sort(
       (a, b) => a.condition.value - b.condition.value
     );
-    
-    // ソート済み未獲得ポケモンリストログを削除
     
     // 条件を満たす最初のポケモンを見つける
     const achievedPokemon = sortedPokemons.find(
@@ -292,16 +266,9 @@ export const usePokemonCollection = () => {
     
     // sortedPokemonsとpokemonCollectionの不一致を検出
     if (eligiblePokemons.length > 0 && !achievedPokemon) {
-      // 直接検索とコレクションの不一致ログを削除
       
       // 直接探索からポケモンを取得し、オーバーライドする
       return eligiblePokemons[0];
-    }
-    
-    if (achievedPokemon) {
-      // 新しいポケモン獲得条件達成ログを削除
-    } else {
-      // 獲得できるポケモンがない場合のログを削除
     }
     
     return achievedPokemon;

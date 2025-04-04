@@ -194,13 +194,12 @@ const ScheduleModal = ({ isOpen, onClose, selectedCell, date }) => {
       
       // マイルストーンもチェック
       console.log('📈 実績記録後にマイルストーンを手動チェックします');
-      setTimeout(() => {
-        // 遅延を増加させて実行し、Firestoreからのデータ同期が確実に完了するようにする
-        console.log('⏱️ マイルストーンチェック実行（遅延後）');
-        checkMilestoneManually();
-      }, 1000); // 500ms→1000msに増加
       
-      // 成功したらモーダルを閉じる
+      // マイルストーンチェックの実行とモーダルのクローズを順番に行う
+      const milestone = await checkMilestoneManually();
+      console.log('✅ マイルストーンチェック完了', milestone ? '稼得あり' : '稼得なし');
+      
+      // 実績モーダルを閉じる
       onClose();
     } catch (error) {
       uiLogger.error('実績記録エラー:', error);
@@ -385,7 +384,10 @@ const ScheduleModal = ({ isOpen, onClose, selectedCell, date }) => {
               </div>
               
               <div className="space-y-2">
-                <p className="text-sm text-gray-600 mb-2">状態を選択してください：</p>
+                <div className="flex justify-between items-center mb-2">
+                  <p className="text-sm text-gray-600">状態を選択してください：</p>
+                  <img src="/pokemon/magnemite.png" alt="マグネミテ" className="h-8 w-8 object-contain" />
+                </div>
                 <div className="grid grid-cols-3 gap-2">
                   <button
                     onClick={() => handleAchievementSave(ACHIEVEMENT_STATUS.COMPLETED)}

@@ -12,8 +12,6 @@ const AchievementManager = () => {
     ACHIEVEMENT_STATUS
   } = useAchievement();
   
-  const { setAchievementsInStats } = useStudyState();
-  
   // StudyStateContextから値を取得するように変更
   const { includeAchievementsInStats } = useStudyState();
   
@@ -28,19 +26,6 @@ const AchievementManager = () => {
       timestamp: new Date().toISOString()
     });
   }, [includeAchievementsInStats, achievements]);
-
-  // チェックボックスの変更ハンドラ
-  const handleIncludeAchievementsToggle = () => {
-    // 新しい値を明示的に指定してトグル
-    const newValue = !includeAchievementsInStats;
-    uiLogger.info('実績設定変更', { 
-      変更前: includeAchievementsInStats,
-      変更後: newValue
-    });
-    
-    // StudyStateContextの直接設定関数を使用
-    setAchievementsInStats(newValue);
-  };
 
   // achievementStatsが利用できない場合には直接計算
   const stats = achievementStats.stats.totalPlanned 
@@ -76,33 +61,6 @@ const AchievementManager = () => {
           <span className="px-1 py-0.5 bg-yellow-100 rounded">部分的: {totalPartial}</span>
           <span className="px-1 py-0.5 bg-red-100 rounded">未達成: {totalFailed}</span>
         </div>
-        <div className="text-xs text-gray-500 mt-1">
-          <p>集計設定: {includeAchievementsInStats ? '実績のみ' : 'すべての予定'}</p>
-        </div>
-      </div>
-      
-      <div className="mb-4">
-        <label className="flex items-center">
-          <input
-            type="checkbox"
-            className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4"
-            checked={includeAchievementsInStats}
-            onChange={handleIncludeAchievementsToggle}
-          />
-          <span className="ml-2 text-gray-700 font-medium">集計に実績のみを含める</span>
-        </label>
-        <div className="mt-2">
-          <p className="text-xs text-gray-700 mb-1">
-            {includeAchievementsInStats 
-              ? '✔️ 実際に達成した勉強時間のみを集計に含めます。' 
-              : '✔️ 計画された勉強時間をすべて集計に含めます。'}
-          </p>
-          <p className="text-xs text-gray-500">
-            {includeAchievementsInStats 
-              ? '未達成や未記録の予定は集計から除外されます。' 
-              : '実績の有無は集計に影響しません。'}
-          </p>
-        </div>
       </div>
       
       {/* 実績アイコン説明 */}
@@ -132,7 +90,7 @@ const AchievementManager = () => {
       <div className="mt-4 p-3 bg-gray-50 rounded">
         <p className="text-sm text-gray-600">
           各勉強予定をクリックすると、実績を記録できます。
-          実績に応じて集計結果が変わります。
+          実績は勉強時間集計に反映されます。
         </p>
       </div>
     </div>

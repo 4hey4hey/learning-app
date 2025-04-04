@@ -18,7 +18,8 @@ const StatsDashboard = () => {
     categoryHours, 
     weekTotalHours,
     totalStudyHours,
-    allTimeData
+    allTimeData,
+    setAchievementsInStats
   } = useStudyState();
   const { categories } = useCategory();
   const { schedule } = useSchedule();
@@ -165,7 +166,31 @@ const StatsDashboard = () => {
   
   return (
     <div className="bg-white rounded-lg shadow p-4 print:hidden">
-      <h2 className="text-lg font-bold text-gray-800 mb-4">📊 勉強時間集計</h2>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-lg font-bold text-gray-800">📊 勉強時間集計</h2>
+        
+        {/* 予定・実績の切り替えボタン */}
+        <div className="inline-flex rounded-md shadow-sm" role="group">
+          <button
+            type="button"
+            onClick={() => setAchievementsInStats(false)}
+            className={`px-4 py-2 text-sm font-medium rounded-l-lg border ${!includeAchievementsInStats 
+              ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700' 
+              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+          >
+            予定
+          </button>
+          <button
+            type="button"
+            onClick={() => setAchievementsInStats(true)}
+            className={`px-4 py-2 text-sm font-medium rounded-r-lg border ${includeAchievementsInStats 
+              ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700' 
+              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+          >
+            実績
+          </button>
+        </div>
+      </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         {/* 左側：基本統計と達成率 */}
@@ -196,14 +221,11 @@ const StatsDashboard = () => {
           <div className="mb-4 text-center p-3 bg-yellow-50 rounded">
             <p className="text-sm text-gray-600">週間実績記録率</p>
             <p className="text-2xl font-bold text-yellow-600">{recordRate}%</p>
-            <div className="mt-1 flex flex-col">
+            <div className="mt-1">
               <p className="text-xs text-gray-700 font-medium">
                 {includeAchievementsInStats 
-                  ? "実績ありの予定のみを集計に含んでいます" 
-                  : "すべての予定を集計に含んでいます"}
-              </p>
-              <p className="text-xs text-gray-500 italic">
-                設定変更は「実績管理」パネルで行えます
+                  ? "実績ありの予定のみを集計中" 
+                  : "すべての予定を集計中"}
               </p>
             </div>
           </div>

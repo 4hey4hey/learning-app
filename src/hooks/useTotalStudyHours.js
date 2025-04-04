@@ -10,7 +10,6 @@ import { useState, useCallback } from 'react';
  * @returns {number} 総学習時間（時間）
  */
 export const calculateTotalHours = (schedules = {}, achievements = {}, achievementsOnly = true) => {
-  // 総学習時間計算処理の開始
   
   // 実績データの合計数をカウント
   let totalCompletedItems = 0;
@@ -47,7 +46,7 @@ export const calculateTotalHours = (schedules = {}, achievements = {}, achieveme
               }
             }
           } catch (error) {
-            // 学習時間計算中のエラー処理
+            console.error('学習時間計算エラー:', error);
           }
         }
       }
@@ -58,8 +57,6 @@ export const calculateTotalHours = (schedules = {}, achievements = {}, achieveme
   // 部分的に完了した項目は0.7時間として計算
   const totalHours = totalCompletedItems + (totalPartialItems * 0.7);
   
-  // 総学習時間の計算結果
-  
   return Math.round(totalHours * 10) / 10;
 };
 
@@ -68,11 +65,12 @@ export const calculateTotalHours = (schedules = {}, achievements = {}, achieveme
  */
 export const useTotalStudyHours = () => {
   const [totalHours, setTotalHours] = useState(0);
-  const [stats, setStats] = useState({
+  // 注意: statsは使用されていませんが、APIの互換性のために維持しています
+  const stats = {
     completed: 0,
     partial: 0,
     total: 0
-  });
+  };
   
   const calculateHours = useCallback((schedules, achievements, achievementsOnly) => {
     const result = calculateTotalHours(schedules, achievements, achievementsOnly);
