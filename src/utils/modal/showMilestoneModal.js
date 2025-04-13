@@ -152,3 +152,6 @@ export function showMilestoneModal(pokemonData) {
 //      message: "学習の炎が燃え上がった！",
 //      condition: { value: 15 }
 //    });
+
+// グローバルスコープに関数を公開する (シングルトンとしての直接呼び出し用)
+window.showMilestoneModal = showMilestoneModal;

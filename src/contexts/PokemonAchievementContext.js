@@ -1,3 +1,4 @@
+import eventManager, { EVENT_TYPES } from '../utils/eventManager';
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { useStudyState } from './StudyStateContext';
 
@@ -52,22 +53,32 @@ export const PokemonAchievementProvider = ({ children }) => {
 
   // 実績登録完了時のイベントリスナー
   useEffect(() => {
+    // 新しいEventManagerを使用したリスナー登録
+    const removeListener = eventManager.addListener(
+      EVENT_TYPES.ACHIEVEMENT_CHANGED,
+      async ({ achievement, type }) => {
+        // 実績が保存された場合のみポケモン獲得チェックを行う
+        if (type === 'save') {
+          // 少し遅延させてStudyStateContextの更新が完了するのを待つ
+          setTimeout(() => {
+            checkNewAchievementForPokemon();
+          }, 500);
+        }
+      },
+      { source: 'PokemonAchievementContext' }
+    );
+    
+    // 後方互換性のために従来のイベントリスナーも登録
     const handleAchievementDataChanged = async (event) => {
-      console.log('ポケモン：実績データ変更イベント検出', event?.detail);
-      
       // 追加された実績の情報
       const achievementData = event?.detail?.achievement;
       const changeType = event?.detail?.type;
       
       // 実績が保存された場合のみポケモン獲得チェックを行う
       if (changeType === 'save') {
-        console.log('ポケモン獲得チェックを開始');
         // 少し遅延させてStudyStateContextの更新が完了するのを待つ
         setTimeout(() => {
-          const newlyAchievedPokemon = checkNewAchievementForPokemon();
-          if (newlyAchievedPokemon) {
-            console.log('新しいポケモンを獲得しました:', newlyAchievedPokemon);
-          }
+          checkNewAchievementForPokemon();
         }, 500);
       }
     };
@@ -77,9 +88,13 @@ export const PokemonAchievementProvider = ({ children }) => {
     
     // クリーンアップ関数
     return () => {
+      // 新しいリスナーを削除
+      removeListener();
+      
+      // 後方互換性のための従来のリスナーも削除
       window.removeEventListener('achievementDataChanged', handleAchievementDataChanged);
     };
-  }, [totalStudyHours]);
+  }, [totalStudyHours, checkNewAchievementForPokemon]);
   
   return (
     <PokemonAchievementContext.Provider

@@ -1,3 +1,4 @@
+import eventManager, { EVENT_TYPES } from '../utils/eventManager';
 // src/contexts/StudyStateContext.js
 
 // 共有状態管理のためのコンテキスト
@@ -166,9 +167,34 @@ export const StudyStateProvider = ({ children }) => {
   
   // 実績データ変更イベントをリッスン
   useEffect(() => {
+    // 新しいEventManagerを使用したリスナー登録
+    const removeListener = eventManager.addListener(
+      EVENT_TYPES.ACHIEVEMENT_CHANGED,
+      async ({ achievement, type }) => {
+        // 累計データの再取得
+        try {
+          // 実績データが変更された場合は再取得
+          if (type === 'save' || type === 'delete') {
+            await fetchAllTimeData();
+          }
+          
+          // 直近の実績データを元に学習時間も再計算
+          const total = calculateTotalStudyHours(
+            allSchedules,
+            allAchievements,
+            includeAchievementsInStats
+          );
+          setTotalStudyHours(total);
+        } catch (error) {
+          console.error('実績データ変更処理エラー', error);
+        }
+      },
+      { source: 'StudyStateContext' }
+    );
+    
+    // 後方互換性のために、従来のDOMEventリスナーも登録
     const handleAchievementDataChanged = async (event) => {
       // 実績データ変更イベントの処理
-      
       // 追加された実績の情報
       const achievementData = event?.detail?.achievement;
       const changeType = event?.detail?.type;
@@ -187,8 +213,6 @@ export const StudyStateProvider = ({ children }) => {
           includeAchievementsInStats
         );
         setTotalStudyHours(total);
-        
-        // 学習時間の更新完了
       } catch (error) {
         // エラー処理
       }
@@ -199,6 +223,10 @@ export const StudyStateProvider = ({ children }) => {
     
     // クリーンアップ関数
     return () => {
+      // 新しいリスナーを削除
+      removeListener();
+      
+      // 後方互換性のための従来のリスナーも削除
       window.removeEventListener('achievementDataChanged', handleAchievementDataChanged);
     };
   }, [includeAchievementsInStats, allSchedules, allAchievements, fetchAllTimeData]);

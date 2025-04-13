@@ -282,6 +282,7 @@ export function useMilestoneModal() {
     try {
       // 必要な依存関係の確認
       if (!checkNewPokemonAchievement) {
+        console.log('❗ ポケモンチェック関数が使用できません');
         return null;
       }
       
@@ -317,9 +318,7 @@ export function useMilestoneModal() {
         
         // 新しいマイルストーンかどうか
         const isNewMilestone = !currentShownMilestones.includes(highestPokemon.id);
-        console.log('新しいマイルストーンか？', isNewMilestone);
         
-        // 手動チェックの場合は、表示済みかどうかだけで判断
         if (isNewMilestone) {
           // 表示済みマイルストーンを先に保存
           const updatedShownMilestones = [...currentShownMilestones, highestPokemon.id];
@@ -330,15 +329,8 @@ export function useMilestoneModal() {
           console.log('マイルストーンを設定しました', highestPokemon.name);
           
           return highestPokemon;
-        } else if (process.env.NODE_ENV !== 'production') {
-          // 開発環境では表示済みの場合も表示
-          // デバッグ用に状態を設定
-          setMilestone(highestPokemon);
-          console.log('開発環境用：表示済みですがマイルストーン設定', highestPokemon.name);
-          
-          return highestPokemon;
         } else {
-          // 本番環境で表示済みの場合は何も表示しない
+          // 表示済みの場合は何も表示しない（開発環境も含む）
           console.log('表示済みのためスキップ', highestPokemon.name);
           return null;
         }
@@ -393,6 +385,7 @@ export function useMilestoneModal() {
   const checkMilestoneAfterAchievement = useCallback(async (achievement) => {
     try {
       if (!checkNewPokemonAchievement) {
+        console.log('❗ ポケモンチェック関数が使用できません');
         return;
       }
       
@@ -420,16 +413,26 @@ export function useMilestoneModal() {
         
         // 条件を達成していてまだ表示されていないなら表示
         if (isNewMilestone) {
-          // モーダル状態を設定するだけで、直接モーダルは表示しない
-          setMilestone(highestPokemon);
-          
-          // 表示済みマイルストーンを保存
-          const updatedShownMilestones = [...currentShownMilestones, highestPokemon.id];
-          await saveShownMilestones(updatedShownMilestones);
+          try {
+            // Reactコンポーネントによる表示のためにモーダル状態を設定
+            setMilestone(highestPokemon);
+            
+            // 表示済みマイルストーンを保存
+            const updatedShownMilestones = [...currentShownMilestones, highestPokemon.id];
+            await saveShownMilestones(updatedShownMilestones);
+          } catch (showError) {
+            console.error('マイルストーン表示エラー:', showError);
+            // エラーが発生してもユーザー体験を妨げないように例外を閉じ込む
+          }
+        } else {
+          // 既に獲得済みの場合はログのみ出力
+          console.log('ℹ️ マイルストーンは既に獲得済みです:', highestPokemon.name);
         }
       }
     } catch (error) {
       // エラー処理
+      console.error('ポケモン獲得チェックエラー:', error);
+      // エラーが発生しても例外を上位に伝えない
     }
   }, [totalStudyHours, allTimeData, checkNewPokemonAchievement, fetchShownMilestones, saveShownMilestones, calculateDirectStudyHours]); // pokemonDataをPOKEMON_DATAに変更したため依存配列から削除
 
@@ -508,14 +511,7 @@ export function useMilestoneModal() {
             const updatedShownMilestones = [...currentShownMilestones, highestPokemon.id];
             await saveShownMilestones(updatedShownMilestones);
             
-            // モーダル表示
-            setTimeout(() => {
-              if (window.showFinalModal) {
-                window.showFinalModal(highestPokemon);
-              } else {
-                showMilestoneModal(highestPokemon);
-              }
-            }, 100);
+            // Reactコンポーネントによる表示のための状態は既に設定済み
           }
         }
       } catch (error) {
@@ -530,16 +526,14 @@ export function useMilestoneModal() {
     setMilestone(null);
   };
 
-  // 代替表示機能: React コンポーネントでの表示に問題があった場合の回避策
+  // 代替表示機能: Reactコンポーネントを優先的に使用するように修正、ただし緊急時のバックアップとして直接表示も可能
   const showMilestoneDirectly = useCallback((milestoneData = null) => {
     // milestoneが指定されていない場合は、現在のmilestone状態を使用
     const dataToShow = milestoneData || milestone;
     if (dataToShow) {
-      if (window.showFinalModal) {
-        window.showFinalModal(dataToShow);
-      } else {
-        showMilestoneModal(dataToShow);
-      }
+      // React状態を更新してコンポーネントで表示
+      setMilestone(dataToShow);
+      console.log('showMilestoneDirectly: Reactコンポーネントで表示します');
       return true;
     } else {
       return false;

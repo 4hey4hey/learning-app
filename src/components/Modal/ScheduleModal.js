@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import eventManager, { EVENT_TYPES } from '../../utils/eventManager';
 import { useCategory } from '../../contexts/CategoryContext';
 import { useSchedule } from '../../contexts/ScheduleContext';
 import { useAchievement, ACHIEVEMENT_STATUS, ACHIEVEMENT_ICONS } from '../../contexts/AchievementContext';
@@ -164,7 +165,10 @@ const ScheduleModal = ({ isOpen, onClose, selectedCell, date }) => {
 
   // 実績記録処理
   const handleAchievementSave = async (status) => {
-    if (!selectedCell || !scheduleInfo || !currentAchievementKey) return;
+    if (!selectedCell || !scheduleInfo || !currentAchievementKey) {
+      showError('実績を記録する条件が揃っていません');
+      return;
+    }
     
     try {
       // 変更前の状態をログ出力
@@ -174,14 +178,47 @@ const ScheduleModal = ({ isOpen, onClose, selectedCell, date }) => {
         現在の状態: achievementStatus || '未設定'
       });
       
-      console.log('🔍 実績登録処理開始 - マイルストーンをチェックします');
+      // 適切なエラーメッセージを表示するための関数
+      const showAppropriateError = (error) => {
+        // エラーの種類に応じて適切なメッセージを表示
+        let errorMessage = '実績の記録に失敗しました';
+        
+        if (error && error.code) {
+          switch (error.code) {
+            case 'permission-denied':
+              errorMessage = '権限エラー: ログイン状態を確認してください';
+              break;
+            case 'unavailable':
+            case 'network-request-failed':
+              errorMessage = 'ネットワークエラー: 接続を確認してください';
+              break;
+            default:
+              // デフォルトメッセージを使用
+          }
+        }
+        
+        showError(errorMessage);
+      };
       
       // 実績を保存
       const savedAchievement = await saveAchievement(currentAchievementKey, status, '');
       
-      // 保存された実績の確認ログ
-      console.log('✅ 実績が登録されました:', savedAchievement);
-      console.log('👉 AchievementContext のコールバックが実行されるはずです');
+      // 実績保存結果の確認
+      if (savedAchievement) {
+        // イベントを発行
+        try {
+          eventManager.dispatchEvent(EVENT_TYPES.ACHIEVEMENT_CHANGED, {
+            achievement: savedAchievement,
+            type: 'save'
+          });
+        } catch (eventError) {
+          console.error('イベント発行エラー', eventError);
+        }
+      } else {
+        // 実績保存失敗時の処理
+        showAppropriateError(null);
+        return;
+      }
       
       // 実績データを再取得
       await fetchAchievements();
@@ -193,21 +230,36 @@ const ScheduleModal = ({ isOpen, onClose, selectedCell, date }) => {
       const achievedPokemon = checkNewAchievementForPokemon();
       
       // マイルストーンもチェック
-      console.log('📈 実績記録後にマイルストーンを手動チェックします');
-      
-      // マイルストーンチェックの実行とモーダルのクローズを順番に行う
-      const milestone = await checkMilestoneManually();
-      console.log('✅ マイルストーンチェック完了', milestone ? '稼得あり' : '稼得なし');
+      try {
+        // マイルストーンをチェック
+        await checkMilestoneManually();
+        // useMilestoneModal内で表示済みチェックが行われ、マイルストーンが見つかった場合は
+        // Reactコンポーネントとしてダッシュボード上に表示される
+      } catch (milestoneError) {
+        // マイルストーンチェックのエラーは実績登録自体には影響しない
+        console.error('マイルストーンチェックエラー:', milestoneError);
+        // エラーが発生しても実績登録は成功しているので、エラーメッセージを表示しない
+      }
       
       // 実績モーダルを閉じる
       onClose();
     } catch (error) {
       uiLogger.error('実績記録エラー:', error);
-      showError('実績の記録に失敗しました');
+      
+      // 適切なエラーメッセージを表示
+      let errorMessage = '実績の記録に失敗しました';
+      
+      if (error.message && error.message.includes('network')) {
+        errorMessage = 'ネットワーク接続が間違っています。ネットワークを確認して再試行してください。';
+      } else if (error.message && error.message.includes('permission')) {
+        errorMessage = '権限エラーが発生しました。再度ログインしてください。';
+      }
+      
+      showError(errorMessage);
     }
   };
   
-  // 実績削除処理（新規追加）
+  // 実績削除処理
   const handleAchievementDelete = async () => {
     if (!currentAchievementKey) return;
     

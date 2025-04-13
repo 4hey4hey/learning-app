@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useCallback } from 'react';
+import React, { createContext, useState, useContext, useCallback, useEffect } from 'react';
 import Toast from '../components/Toast/Toast';
 
 // トースト通知のコンテキスト
@@ -11,13 +11,19 @@ export const ToastProvider = ({ children }) => {
   // トーストを追加
   const addToast = useCallback((message, type = 'info', duration = 3000) => {
     const id = Date.now();
-    setToasts(prevToasts => [...prevToasts, { id, message, type, duration }]);
+    setToasts(prevToasts => {
+      const newToasts = [...prevToasts, { id, message, type, duration }];
+      return newToasts;
+    });
     return id;
   }, []);
 
   // トーストを削除
   const removeToast = useCallback(id => {
-    setToasts(prevToasts => prevToasts.filter(toast => toast.id !== id));
+    setToasts(prevToasts => {
+      const newToasts = prevToasts.filter(toast => toast.id !== id);
+      return newToasts;
+    });
   }, []);
 
   // 成功メッセージ
@@ -27,7 +33,14 @@ export const ToastProvider = ({ children }) => {
 
   // エラーメッセージ
   const showError = useCallback((message, duration) => {
-    return addToast(message, 'error', duration);
+    // 既存のエラートーストを非表示にする
+    setToasts(prevToasts => {
+      return prevToasts.filter(toast => toast.type !== 'error');
+    });
+    
+    // 新しいエラートーストを追加
+    const id = addToast(message, 'error', duration);
+    return id;
   }, [addToast]);
 
   // 警告メッセージ

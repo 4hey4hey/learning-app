@@ -1,4 +1,4 @@
-import React, { 
+import eventManager, { EVENT_TYPES } from '../utils/eventManager';import React, { 
   createContext, 
   useState, 
   useContext, 
@@ -213,6 +213,13 @@ function AchievementProvider({ children }) {
 
   // 実績を保存する関数
   const saveAchievement = useCallback(async (uniqueKey, status, comment = '') => {
+    console.log('💾 実績保存処理開始', {
+      uniqueKey,
+      status,
+      comment,
+      userId: currentUser?.uid || 'demo',
+      demoMode
+    });
     if (!uniqueKey || !status) {
       setError('実績の保存に必要なデータが不足しています。');
       return null;
@@ -246,83 +253,160 @@ function AchievementProvider({ children }) {
       
       // デモモードの場合はローカルストレージに保存
       if (demoMode) {
-        const storageKey = `demo_achievements_${weekKey}`;
-        
-        // 現在の実績データを取得
-        const storedAchievements = localStorage.getItem(storageKey);
-        let currentAchievements = storedAchievements ? JSON.parse(storedAchievements) : {};
-        
-        // 実績データを更新
-        currentAchievements[uniqueKey] = newAchievement;
-        
-        // ローカルストレージに保存
-        localStorage.setItem(storageKey, JSON.stringify(currentAchievements));
-        
-        // ステートの更新
-        setAchievements(prev => ({
-          ...prev,
-          [uniqueKey]: newAchievement
-        }));
-        
-        // 実績をローカルストレージに保存
-        
-        // 実績登録完了イベントを発行
-        window.dispatchEvent(new CustomEvent('achievementDataChanged', {
-          detail: { achievement: newAchievement, type: 'save' }
-        }));
-        
-        // コールバックを実行
-        achievementCallbacks.forEach((callback) => {
-          try {
-            callback(newAchievement);
-          } catch (callbackError) {
-            achievementLogger.error('実績コールバック実行エラー:', callbackError);
-          }
-        });
-        
-        return newAchievement;
+        console.log('💾 デモモードでの実績保存', { storageKey: `demo_achievements_${weekKey}` });
+        try {
+          const storageKey = `demo_achievements_${weekKey}`;
+          
+          // 現在の実績データを取得
+          const storedAchievements = localStorage.getItem(storageKey);
+          let currentAchievements = storedAchievements ? JSON.parse(storedAchievements) : {};
+          
+          // 実績データを更新
+          currentAchievements[uniqueKey] = newAchievement;
+          
+          // ローカルストレージに保存
+          localStorage.setItem(storageKey, JSON.stringify(currentAchievements));
+          
+          // ステートの更新
+          console.log('💾 state更新前の実績データ', {
+            現在の実績数: Object.keys(achievements).length,
+            追加キー: uniqueKey
+          });
+          setAchievements(prev => {
+            const updated = {
+              ...prev,
+              [uniqueKey]: newAchievement
+            };
+            console.log('💾 state更新後の実績データ', {
+              更新後の実績数: Object.keys(updated).length
+            });
+            return updated;
+          });
+          
+          // 実績をローカルストレージに保存
+          
+          // 実績登録完了イベントを発行
+          console.log('💾 新しいEventManagerを使用して実績イベントを発行');
+          eventManager.dispatchEvent(EVENT_TYPES.ACHIEVEMENT_CHANGED, { 
+            achievement: newAchievement, 
+            type: 'save' 
+          });
+          
+          // 後方互換性のために元のDOMイベントも発行
+          console.log('💾 後方互換用に元のイベントも発行');
+          window.dispatchEvent(new CustomEvent('achievementDataChanged', {
+            detail: { achievement: newAchievement, type: 'save' }
+          }));
+          console.log('💾 実績イベント発行完了');
+          
+          // コールバックを実行
+          achievementCallbacks.forEach((callback) => {
+            try {
+              callback(newAchievement);
+            } catch (callbackError) {
+              achievementLogger.error('実績コールバック実行エラー:', callbackError);
+            }
+          });
+          
+          return newAchievement;
+        } catch (demoModeError) {
+          achievementLogger.error('デモモードの実績保存エラー:', demoModeError);
+          setError('実績データの保存に失敗しました。');
+          return null;
+        }
       }
       
       // 認証済みユーザーの場合はFirestoreに保存
       if (currentUser) {
-        // 現在の実績データを取得
-        let currentAchievements = await getDateSpecificData('achievements', weekKey) || {};
-        
-        // 実績データを更新
-        currentAchievements[uniqueKey] = newAchievement;
-        
-        // Firestoreに保存
-        await setDocument('achievements', weekKey, currentAchievements);
-        
-        // ステートの更新
-        setAchievements(prev => ({
-          ...prev,
-          [uniqueKey]: newAchievement
-        }));
-        
-        // 実績をFirestoreに保存
-        
-        // 実績登録完了イベントを発行
-        window.dispatchEvent(new CustomEvent('achievementDataChanged', {
-          detail: { achievement: newAchievement, type: 'save' }
-        }));
-        
-        // コールバックを実行
-        achievementCallbacks.forEach(callback => {
-          try {
-            callback(newAchievement);
-          } catch (callbackError) {
-            achievementLogger.error('実績コールバック実行エラー:', callbackError);
-          }
+        console.log('💾 Firebase保存処理開始', {
+          weekKey,
+          uniqueKey,
+          userId: currentUser.uid
         });
-        
-        return newAchievement;
+        try {
+          // 現在の実績データを取得
+          let currentAchievements = await getDateSpecificData('achievements', weekKey) || {};
+          
+          // 実績データを更新
+          currentAchievements[uniqueKey] = newAchievement;
+          
+          // Firestoreに保存
+          console.log('💾 Firestore書き込み前', {
+            weekKey,
+            uniqueKey,
+            実績数: Object.keys(currentAchievements).length
+          });
+          
+          const success = await setDocument('achievements', weekKey, currentAchievements);
+          console.log('💾 Firestore書き込み結果', { success });
+          
+          if (!success) {
+            achievementLogger.error('実績保存失敗:', { weekKey, uniqueKey });
+            setError('実績の保存に失敗しました。ネットワーク接続を確認してください。');
+            return null;
+          }
+          
+          // ステートの更新
+          console.log('💾 Firebase処理後の状態更新前', {
+            現在の実績数: Object.keys(achievements).length,
+            追加キー: uniqueKey
+          });
+          
+          setAchievements(prev => {
+            const updated = {
+              ...prev,
+              [uniqueKey]: newAchievement
+            };
+            console.log('💾 状態更新後の実績データ', {
+              更新後の実績数: Object.keys(updated).length
+            });
+            return updated;
+          });
+          
+          // 実績登録完了イベントを発行
+          window.dispatchEvent(new CustomEvent('achievementDataChanged', {
+            detail: { achievement: newAchievement, type: 'save' }
+          }));
+          
+          // コールバックを実行
+          achievementCallbacks.forEach(callback => {
+            try {
+              callback(newAchievement);
+            } catch (callbackError) {
+              achievementLogger.error('実績コールバック実行エラー:', callbackError);
+            }
+          });
+          
+          return newAchievement;
+        } catch (firestoreError) {
+          achievementLogger.error('実績保存のFirestoreエラー:', firestoreError);
+          setError('データベースへの保存に失敗しました。再度お試しください。');
+          
+          // エラーを検出しやすくするための詳細情報をログに追加
+          console.error('実績保存に失敗しました:', {
+            weekKey, 
+            uniqueKey,
+            userId: currentUser.uid,
+            error: firestoreError
+          });
+          
+          return null;
+        }
       }
       
       return null;
     } catch (error) {
+      console.error('❌ 実績保存エラー:', error);
+      console.error('❌ 実績保存エラーの詳細:', {
+        uniqueKey,
+        status,
+        userId: currentUser?.uid || 'demo',
+        demoMode,
+        errorMessage: error.message,
+        errorStack: error.stack
+      });
       achievementLogger.error('実績保存エラー:', error);
-      setError('実績の保存中にエラーが発生しました。');
+      setError(`実績の保存中にエラーが発生しました: ${error.message}`);
       return null;
     } finally {
       setLoading(false);
@@ -443,6 +527,15 @@ function AchievementProvider({ children }) {
       return () => {};
     }
     
+    console.log('📢 新しいEventManagerで実績リスナーを登録');
+    // EventManagerを使用してリスナーを登録
+    const removeListener = eventManager.addListener(
+      EVENT_TYPES.ACHIEVEMENT_CHANGED,
+      (data) => callback(data.achievement),
+      { source: 'AchievementContext' }
+    );
+    
+    // 後方互換性のために従来の方法も維持
     // コールバック関数を保存
     setAchievementCallbacks(prev => {
       const newCallbacks = [...prev, callback];
@@ -451,7 +544,10 @@ function AchievementProvider({ children }) {
     
     // クリーンアップ関数を返す
     return () => {
-      // コールバックを削除
+      // 新しいリスナーを削除
+      removeListener();
+      
+      // 後方互換性のために従来のコールバックも削除
       setAchievementCallbacks(prev => {
         const filtered = prev.filter(cb => cb !== callback);
         return filtered;

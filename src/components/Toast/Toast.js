@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 
 /**
  * トースト通知コンポーネント
  */
 const Toast = ({ message, type = 'info', duration = 3000, onClose }) => {
   const [isVisible, setIsVisible] = useState(true);
+  const closeTimerRef = useRef(null);
+  const toastId = useRef(`toast-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
 
   // トーストのスタイルを決定
   const getToastStyle = useCallback(() => {
@@ -21,15 +23,27 @@ const Toast = ({ message, type = 'info', duration = 3000, onClose }) => {
     }
   }, [type]);
 
-  // 自動で閉じる
+  // 前のタイマーをクリアしてないために、useRefを使用してタイマーを管理
   useEffect(() => {
-    const timer = setTimeout(() => {
+    // 前のタイマーをクリア
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+    }
+    
+    // 新しいタイマーを設定
+    closeTimerRef.current = setTimeout(() => {
       setIsVisible(false);
-      if (onClose) onClose();
+      if (onClose) {
+        onClose();
+      }
     }, duration);
 
-    return () => clearTimeout(timer);
-  }, [duration, onClose]);
+    return () => {
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+      }
+    };
+  }, [duration, onClose, message]); // messageも依存配列に追加して、置き換わりが発生したときにタイマーをリセット
 
   // 表示されていない場合はnullを返す
   if (!isVisible) return null;
@@ -41,8 +55,13 @@ const Toast = ({ message, type = 'info', duration = 3000, onClose }) => {
         <button
           className="ml-4 text-white hover:text-gray-200"
           onClick={() => {
+            if (closeTimerRef.current) {
+              clearTimeout(closeTimerRef.current);
+            }
             setIsVisible(false);
-            if (onClose) onClose();
+            if (onClose) {
+              onClose();
+            }
           }}
         >
           ✕

@@ -4,14 +4,10 @@ import { useFirestore } from '../../../hooks/useFirestore';
 import { useStudyState } from '../../../contexts/StudyStateContext';
 import { POKEMON_DATA } from '../../../constants/pokemonData';
 
-
-
 export const usePokemonCollection = () => {
   const { currentUser, demoMode } = useAuth();
   const { getAllDocuments, setDocument } = useFirestore();
   const { totalStudyHours, allTimeData } = useStudyState();
-  // 実績データは使用しない
-  const contextAchievements = {};
   
   const [pokemonCollection, setPokemonCollection] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -79,7 +75,6 @@ export const usePokemonCollection = () => {
   // 全期間の学習時間を計算する関数
   const calculateDirectStudyHours = useCallback(async () => {
     try {
-      
       // allTimeDataがあればそれを優先して使用
       if (allTimeData && allTimeData.totalHours) {
         return allTimeData.totalHours;
@@ -107,10 +102,12 @@ export const usePokemonCollection = () => {
         
         return hours;
       } catch (firestoreError) {
+        console.error('Firestoreデータ取得エラー:', firestoreError);
         // Firestoreデータ取得失敗時は利用可能な代替値を返す
         return allTimeData?.totalHours || totalStudyHours || 0;
       }
     } catch (error) {
+      console.error('学習時間計算エラー:', error);
       // エラー発生時は利用可能な代替値を返す
       return allTimeData?.totalHours || totalStudyHours || 0;
     }
@@ -150,7 +147,6 @@ export const usePokemonCollection = () => {
   }, [
     allTimeData, 
     totalStudyHours, 
-    contextAchievements, 
     calculateDirectStudyHours
   ]);
   
@@ -162,12 +158,48 @@ export const usePokemonCollection = () => {
         // ユーザーの獲得済みポケモンIDリストを取得
         let collectedPokemonIds = [];
         
+        // まずローカルストレージのバックアップを確認
+        try {
+          const backupData = localStorage.getItem('pokemon_collection_backup');
+          if (backupData) {
+            const backupIds = JSON.parse(backupData);
+            if (Array.isArray(backupIds) && backupIds.length > 0) {
+              console.log('ポケモンデータのバックアップを読み込みました:', backupIds.length, '個');
+              collectedPokemonIds = backupIds;
+            }
+          }
+        } catch (localErr) {
+          console.error('バックアップデータ読み込みエラー:', localErr);
+        }
+        
         if (currentUser) {
-          // Firestoreから取得したデータがあれば使用
-          const pokemonsData = await getAllDocuments('pokemons');
-          // 'collection'ドキュメントがあればそこから取得
-          const collectionDoc = pokemonsData['collection'];
-          collectedPokemonIds = collectionDoc?.collectedPokemons || [];
+          try {
+            // Firestoreから取得したデータがあれば使用
+            // ※注: getAllDocuments関数は内部で/users/{uid}/がパスに付与される
+            const pokemonsData = await getAllDocuments('pokemonAchievements');
+            // 'collection'ドキュメントがあればそこから取得
+            const collectionDoc = pokemonsData['collection'];
+            
+            if (collectionDoc?.collectedPokemons && Array.isArray(collectionDoc.collectedPokemons)) {
+              // Firestoreからデータの取得に成功した場合は、そちらを優先
+              collectedPokemonIds = collectionDoc.collectedPokemons;
+              console.log('Firestoreからポケモンデータを読み込みました:', collectedPokemonIds.length, '個');
+              
+              // 成功したらバックアップも更新
+              localStorage.setItem('pokemon_collection_backup', JSON.stringify(collectedPokemonIds));
+            } else if (collectedPokemonIds.length > 0) {
+              // Firestoreにデータがなく、バックアップがある場合は自動復元
+              console.log('バックアップデータをFirestoreに復元します');
+              await setDocument('pokemonAchievements', 'collection', {
+                collectedPokemons: collectedPokemonIds,
+                updatedAt: new Date(),
+                restoredFromBackup: true
+              });
+            }
+          } catch (firestoreErr) {
+            console.error('Firestoreデータ取得エラー:', firestoreErr);
+            // Firestore取得失敗時は、すでに取得したバックアップデータを使用
+          }
         }
         
         // ポケモンデータに獲得状態を追加
@@ -194,6 +226,7 @@ export const usePokemonCollection = () => {
       } catch (err) {
         // エラー発生時はユーザーにエラーメッセージを表示
         setError('ポケモンデータの読み込みに失敗しました');
+        console.error('ポケモンデータ読み込みエラー:', err);
         
         // エラー時は学習時間に基づいてローカルデータを表示
         const localPokemons = POKEMON_DATA.map(pokemon => ({
@@ -208,7 +241,7 @@ export const usePokemonCollection = () => {
     };
     
     fetchCollection();
-  }, [currentUser, getAllDocuments, effectiveStudyHours]);
+  }, [currentUser, getAllDocuments, setDocument, effectiveStudyHours]);
   
   // 獲得状態をデータベースに保存
   const saveCollectionToDatabase = async (pokemons) => {
@@ -219,19 +252,37 @@ export const usePokemonCollection = () => {
     try {
       if (currentUser) {
         // 認証済みユーザーの場合はFirestoreに保存
-        await setDocument('pokemons', 'collection', {
+        // ※注: setDocument関数は内部で/users/{uid}/がパスに付与される
+        await setDocument('pokemonAchievements', 'collection', {
           collectedPokemons: collectedIds,
           updatedAt: new Date()
         });
+        
+        console.log('ポケモンコレクションを保存しました:', collectedIds.length, '個');
+        
+        // ローカルストレージにもバックアップ
+        localStorage.setItem('pokemon_collection_backup', JSON.stringify(collectedIds));
       }
     } catch (err) {
-      // コレクション保存に失敗しても特別な処理はしない
+      // エラーログを詳細に記録
+      console.error('ポケモンコレクション保存エラー:', err);
+      console.error('エラー詳細:', {
+        uid: currentUser?.uid,
+        collectedCount: collectedIds.length
+      });
+      
+      // フォールバック: ローカルストレージに保存して復元可能にする
+      try {
+        localStorage.setItem('pokemon_collection_backup', JSON.stringify(collectedIds));
+        console.log('ポケモンデータのバックアップを保存しました');
+      } catch (localErr) {
+        console.error('ローカルストレージ保存エラー:', localErr);
+      }
     }
   };
   
   // 新しいポケモン獲得判定（実績入力後に使用）
   const checkNewPokemonAchievement = async (hours = null) => {
-    
     // 時間が指定されていない場合は再計算
     let effectiveHours = hours;
     if (effectiveHours === null) {
@@ -266,7 +317,6 @@ export const usePokemonCollection = () => {
     
     // sortedPokemonsとpokemonCollectionの不一致を検出
     if (eligiblePokemons.length > 0 && !achievedPokemon) {
-      
       // 直接探索からポケモンを取得し、オーバーライドする
       return eligiblePokemons[0];
     }
